@@ -1,0 +1,32 @@
+{
+  "name": "@vidforge/worker",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "node init && tsx watch src/index.ts",
+    "start": "node init && tsx src/index.ts",
+    "typecheck": "tsc --noEmit",
+    "check": "tsx src/scripts/check-providers.ts",
+    "render:selftest": "tsx src/scripts/render-selftest.ts",
+    "voice:audit": "tsx src/scripts/voice-audit.ts",
+    "font:check": "tsx src/scripts/font-check.ts",
+    "smoke": "tsx src/scripts/smoke.ts",
+    "marketing:images": "tsx src/scripts/marketing-images.ts",
+    "marketing:tutorials": "tsx src/scripts/marketing-tutorials.ts",
+    "marketing:feature": "tsx src/scripts/feature-homepage.ts",
+    "music:library": "tsx src/scripts/music-library.ts"
+  },
+  "dependencies": {
+    "@vidforge/db": "*",
+    "@vidforge/shared": "*",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.0",
+    "tsx": "^4.19.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/node": "^22.0.0",
+    "typescript": "^5.6.0"
+  }
+}

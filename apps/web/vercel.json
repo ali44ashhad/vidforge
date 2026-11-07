@@ -1,0 +1,5 @@
+{
+  "installCommand": "cd ../.. && npm install",
+  "buildCommand": "cd ../.. && npm run db:generate && cd apps/web && npx next build",
+  "framework": "nextjs"
+}
