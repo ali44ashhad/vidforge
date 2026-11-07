@@ -1,0 +1,69 @@
+{
+  "available": true,
+  "items": [
+    {
+      "id": "showreel",
+      "title": "Y2ube showreel",
+      "projectId": "cmtvy606y0000jp0486ihhz5x",
+      "url": "https://media.y2ube.io/files/projects/cmtvy606y0000jp0486ihhz5x/output/final.mp4",
+      "thumbnailUrl": "https://media.y2ube.io/files/projects/cmtvy606y0000jp0486ihhz5x/output/thumbnail.jpg",
+      "duration": 64
+    },
+    {
+      "id": "demo",
+      "title": "Y2ube in 90 seconds",
+      "projectId": "cmtvuo6tf0003jy04q47jquci",
+      "url": "https://media.y2ube.io/files/projects/cmtvuo6tf0003jy04q47jquci/output/final.mp4",
+      "thumbnailUrl": "https://media.y2ube.io/files/projects/cmtvuo6tf0003jy04q47jquci/output/thumbnail.jpg",
+      "duration": 90.166667
+    },
+    {
+      "id": "niche",
+      "title": "Choose a profitable channel direction",
+      "projectId": "cmtvuo79o0006jy04gpsoqhfi",
+      "url": "https://media.y2ube.io/files/projects/cmtvuo79o0006jy04gpsoqhfi/output/final.mp4",
+      "thumbnailUrl": "https://media.y2ube.io/files/projects/cmtvuo79o0006jy04gpsoqhfi/output/thumbnail.jpg",
+      "duration": 140.466667
+    },
+    {
+      "id": "first-video",
+      "title": "Create your first video",
+      "projectId": "cmtvuo7mi0009jy043zeo5t2e",
+      "url": "https://media.y2ube.io/files/projects/cmtvuo7mi0009jy043zeo5t2e/output/final.mp4",
+      "thumbnailUrl": "https://media.y2ube.io/files/projects/cmtvuo7mi0009jy043zeo5t2e/output/thumbnail.jpg",
+      "duration": 151.4
+    },
+    {
+      "id": "thumbnails",
+      "title": "Make thumbnails people click",
+      "projectId": "cmtvuo7x6000cjy04m2darn12",
+      "url": "https://media.y2ube.io/files/projects/cmtvuo7x6000cjy04m2darn12/output/final.mp4",
+      "thumbnailUrl": "https://media.y2ube.io/files/projects/cmtvuo7x6000cjy04m2darn12/output/thumbnail.jpg",
+      "duration": 158.8
+    },
+    {
+      "id": "publish",
+      "title": "Publish correctly on YouTube",
+      "projectId": "cmtvuo88o000fjy04xeeurc31",
+      "url": "https://media.y2ube.io/files/projects/cmtvuo88o000fjy04xeeurc31/output/final.mp4",
+      "thumbnailUrl": "https://media.y2ube.io/files/projects/cmtvuo88o000fjy04xeeurc31/output/thumbnail.jpg",
+      "duration": 162.933333
+    },
+    {
+      "id": "retention",
+      "title": "Understand watch time & retention",
+      "projectId": "cmtvuo8kc000ijy04bnlsc8y6",
+      "url": "https://media.y2ube.io/files/projects/cmtvuo8kc000ijy04bnlsc8y6/output/final.mp4",
+      "thumbnailUrl": "https://media.y2ube.io/files/projects/cmtvuo8kc000ijy04bnlsc8y6/output/thumbnail.jpg",
+      "duration": 174.466667
+    },
+    {
+      "id": "monetize",
+      "title": "Prepare for monetization",
+      "projectId": "cmtvuo8zy000ljy04546jnk4a",
+      "url": "https://media.y2ube.io/files/projects/cmtvuo8zy000ljy04546jnk4a/output/final.mp4",
+      "thumbnailUrl": "https://media.y2ube.io/files/projects/cmtvuo8zy000ljy04546jnk4a/output/thumbnail.jpg",
+      "duration": 143.533333
+    }
+  ]
+}

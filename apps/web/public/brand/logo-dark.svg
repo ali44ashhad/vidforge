@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 56" role="img" aria-label="Y2ube">
+  <rect width="56" height="56" rx="16" fill="#5B5AF7"/>
+  <path d="M18 16.5v23l21-11.5L18 16.5Z" fill="white"/>
+  <path d="M29 18c7 1 12 5 12 10s-5 9-12 10" fill="none" stroke="#FFB84D" stroke-width="3" stroke-linecap="round"/>
+  <text x="70" y="37" font-family="Noto Sans, sans-serif" font-size="31" font-weight="800" fill="#F7F7FB">Y2ube</text>
+</svg>
