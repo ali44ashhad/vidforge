@@ -139,6 +139,14 @@ async function renderWithLock(tl: Timeline, onProgress: Progress, log: (m: strin
   // 6. final encode (burn captions if enabled, otherwise copy the video stream)
   const tFinal = Date.now();
   const finalPath = path.join(outDir, "final.mp4");
+  const already = fs.existsSync(finalPath) ? await probeDuration(finalPath).catch(() => 0) : 0;
+  if (already >= videoDuration - 1) {
+    log(`final encode already done (${already.toFixed(1)}s) — reusing final.mp4`);
+    const thumbPath = path.join(outDir, "thumbnail.jpg");
+    if (!fs.existsSync(thumbPath)) await runFfmpeg(["-ss", Math.min(3, videoDuration / 2).toFixed(2), "-i", finalPath, "-frames:v", "1", "-q:v", "3", thumbPath]);
+    const duration = await probeDuration(finalPath);
+    return { finalPath, thumbPath, srtPath, duration, fileSize: fs.statSync(finalPath).size };
+  }
   const args = ["-i", videoTrack, "-i", mixed];
   const burnCaptions = tl.captionsEnabled && cues.length > 0;
   const logo = tl.logo && fs.existsSync(tl.logo.src) ? tl.logo : null;
@@ -155,7 +163,7 @@ async function renderWithLock(tl: Timeline, onProgress: Progress, log: (m: strin
   }
   const banners = bannerFilters(tl.banners, tl.width, tl.height, path.join(work, "banners"));
   if (banners.length) log(`banners: ${tl.banners?.top ?? ""} / ${tl.banners?.bottom ?? ""}`);
-  const cta = ctaFilters(videoDuration, tl.width, tl.height, tl.language, path.join(work, "cta"));
+  const cta = ctaFilters(videoDuration, tl.width, tl.height, tl.language, path.join(work, "cta"), tl.channelName);
   if (cta.length) log(`subscribe overlay: ${ctaWindows(videoDuration).map((w) => `${w.kind} @ ${w.start.toFixed(0)}s`).join(", ")}`);
   if (burnCaptions || logo || look || banners.length || presenterTrack || cta.length) {
     const chain: string[] = [];
@@ -175,9 +183,15 @@ async function renderWithLock(tl: Timeline, onProgress: Progress, log: (m: strin
     }
     if (logo) {
       args.push("-i", logo.src);
-      const m = Math.round(tl.width * 0.03);
-      const pos = { top_right: `W-w-${m}:${m}`, top_left: `${m}:${m}`, bottom_right: `W-w-${m}:H-h-${m}`, bottom_left: `${m}:H-h-${m}` }[logo.position] ?? `W-w-${m}:${m}`;
-      chain.push(`[${nextInput}:v]scale=${Math.round(tl.width * 0.11)}:-1,format=rgba,colorchannelmixer=aa=0.9[logo]`, `${cur}[logo]overlay=${pos}[vl]`);
+      const m = Math.round(tl.width * 0.028);
+      const size = Math.round(tl.width * 0.072 / 2) * 2;
+      const pos = { top_right: `W-w-${m}:${m}`, top_left: `${m}:${m}`, bottom_right: `W-w-${m}:H-h-${m}`, bottom_left: `${m}:H-h-${m}` }[logo.position] ?? `W-w-${m}:H-h-${m}`;
+      // small round channel badge, same place as a watermark in the corner
+      const circle = "if(lte(hypot(X-W/2\\,Y-H/2)\\,W/2-1)\\,255\\,0)";
+      chain.push(
+        `[${nextInput}:v]scale=${size}:${size}:force_original_aspect_ratio=increase,crop=${size}:${size},format=rgba,geq=r='r(X\\,Y)':g='g(X\\,Y)':b='b(X\\,Y)':a='${circle}'[logo]`,
+        `${cur}[logo]overlay=${pos}:format=auto[vl]`,
+      );
       cur = "[vl]"; nextInput++;
     }
     if (presenterTrack && tl.presenter) {

@@ -20,25 +20,27 @@ const first = (paths: string[]) => paths.find((p) => p && fs.existsSync(p)) ?? n
  * Picks a font FILE for drawtext (overlays, title cards, thumbnails) that can render the text.
  * Env overrides: THUMBNAIL_FONT (bold display font), OVERLAY_FONT, FONT_DEVANAGARI, FONT_GURMUKHI, FONT_ARABIC, FONT_CJK.
  */
+const WIN = process.platform === "win32" ? "C:/Windows/Fonts" : "";
+
 export function fontFileFor(text: string, purpose: "display" | "overlay" = "display"): string | null {
-  if (hasDevanagari(text)) return first([process.env.FONT_DEVANAGARI || "", "/var/www/vidforge/fonts/Mukta-ExtraBold.ttf", "/var/www/vidforge/fonts/Mukta-Bold.ttf",
+  if (hasDevanagari(text)) return first([process.env.FONT_DEVANAGARI || "", `${WIN}/Nirmala.ttc`, `${WIN}/NirmalaB.ttf`, "/var/www/vidforge/fonts/Mukta-ExtraBold.ttf", "/var/www/vidforge/fonts/Mukta-Bold.ttf",
     "/System/Library/Fonts/Supplemental/DevanagariMT.ttc", "/System/Library/Fonts/Supplemental/Devanagari Sangam MN.ttc",
     "/System/Library/Fonts/Supplemental/KohinoorDevanagari.ttc", "/System/Library/Fonts/Supplemental/Kohinoor Devanagari.ttc",
     "/Library/Fonts/NotoSansDevanagari-Bold.ttf", "/usr/share/fonts/truetype/noto/NotoSansDevanagari-Bold.ttf", "/usr/share/fonts/truetype/noto/NotoSansDevanagari-Regular.ttf",
     "/usr/share/fonts/truetype/lohit-devanagari/Lohit-Devanagari.ttf"]);
-  if (hasGurmukhi(text)) return first([process.env.FONT_GURMUKHI || "", "/var/www/vidforge/fonts/MuktaMahee-ExtraBold.ttf", "/var/www/vidforge/fonts/MuktaMahee-Bold.ttf", "/System/Library/Fonts/Supplemental/Gurmukhi.ttf", "/System/Library/Fonts/Supplemental/GurmukhiMN.ttc", "/usr/share/fonts/truetype/noto/NotoSansGurmukhi-Bold.ttf"]);
-  if (hasArabic(text)) return first([process.env.FONT_ARABIC || "", "/System/Library/Fonts/Supplemental/GeezaPro.ttc", "/usr/share/fonts/truetype/noto/NotoNaskhArabic-Bold.ttf"]);
-  if (hasCJK(text)) return first([process.env.FONT_CJK || "", "/System/Library/Fonts/Hiragino Sans GB.ttc", "/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc"]);
+  if (hasGurmukhi(text)) return first([process.env.FONT_GURMUKHI || "", `${WIN}/Nirmala.ttc`, "/var/www/vidforge/fonts/MuktaMahee-ExtraBold.ttf", "/var/www/vidforge/fonts/MuktaMahee-Bold.ttf", "/System/Library/Fonts/Supplemental/Gurmukhi.ttf", "/System/Library/Fonts/Supplemental/GurmukhiMN.ttc", "/usr/share/fonts/truetype/noto/NotoSansGurmukhi-Bold.ttf"]);
+  if (hasArabic(text)) return first([process.env.FONT_ARABIC || "", `${WIN}/trado.ttf`, "/System/Library/Fonts/Supplemental/GeezaPro.ttc", "/usr/share/fonts/truetype/noto/NotoNaskhArabic-Bold.ttf"]);
+  if (hasCJK(text)) return first([process.env.FONT_CJK || "", `${WIN}/msyh.ttc`, "/System/Library/Fonts/Hiragino Sans GB.ttc", "/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc"]);
   const env = purpose === "display" ? process.env.THUMBNAIL_FONT : process.env.OVERLAY_FONT || process.env.THUMBNAIL_FONT;
-  return first([env || "", "/System/Library/Fonts/Supplemental/Arial Black.ttf", "/System/Library/Fonts/Supplemental/Impact.ttf", "/Library/Fonts/Arial Black.ttf",
+  return first([env || "", `${WIN}/arialbd.ttf`, `${WIN}/segoeuib.ttf`, "/System/Library/Fonts/Supplemental/Arial Black.ttf", "/System/Library/Fonts/Supplemental/Impact.ttf", "/Library/Fonts/Arial Black.ttf",
     "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf", "/System/Library/Fonts/Helvetica.ttc"]);
 }
 
 /** Font FAMILY NAME for libass captions (force_style FontName). */
 export function captionFontFor(text: string): string {
-  if (hasDevanagari(text)) return process.env.CAPTION_FONT_DEVANAGARI || (process.platform === "darwin" ? "Devanagari MT" : "Mukta");
-  if (hasGurmukhi(text)) return process.env.CAPTION_FONT_GURMUKHI || (process.platform === "darwin" ? "Gurmukhi MN" : "Mukta Mahee");
-  if (hasArabic(text)) return process.env.CAPTION_FONT_ARABIC || (process.platform === "darwin" ? "Geeza Pro" : "Noto Naskh Arabic");
-  if (hasCJK(text)) return process.env.CAPTION_FONT_CJK || (process.platform === "darwin" ? "Hiragino Sans" : "Noto Sans CJK SC");
-  return process.env.CAPTION_FONT || (process.platform === "darwin" ? "Helvetica Neue" : "DejaVu Sans");
+  if (hasDevanagari(text)) return process.env.CAPTION_FONT_DEVANAGARI || (process.platform === "darwin" ? "Devanagari MT" : process.platform === "win32" ? "Nirmala UI" : "Mukta");
+  if (hasGurmukhi(text)) return process.env.CAPTION_FONT_GURMUKHI || (process.platform === "darwin" ? "Gurmukhi MN" : process.platform === "win32" ? "Nirmala UI" : "Mukta Mahee");
+  if (hasArabic(text)) return process.env.CAPTION_FONT_ARABIC || (process.platform === "darwin" ? "Geeza Pro" : process.platform === "win32" ? "Traditional Arabic" : "Noto Naskh Arabic");
+  if (hasCJK(text)) return process.env.CAPTION_FONT_CJK || (process.platform === "darwin" ? "Hiragino Sans" : process.platform === "win32" ? "Microsoft YaHei" : "Noto Sans CJK SC");
+  return process.env.CAPTION_FONT || (process.platform === "darwin" ? "Helvetica Neue" : process.platform === "win32" ? "Arial" : "DejaVu Sans");
 }

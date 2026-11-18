@@ -3,9 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, Upload } from "lucide-react";
-import { ASPECT_RATIOS, DURATION_OPTIONS, VISUAL_SOURCES, VOICE_STYLES, MUSIC_STYLES, CAPTION_STYLES, OUTPUT_QUALITIES, LANGUAGES, LOOKS, findTemplate } from "@vidforge/shared";
+import { ASPECT_RATIOS, DURATION_OPTIONS, VOICE_STYLES, CAPTION_STYLES, OUTPUT_QUALITIES, LANGUAGES, LOOKS, VISUAL_SOURCES, findTemplate } from "@vidforge/shared";
 import TypePicker from "./TypePicker";
-import StylePicker from "./StylePicker";
 import VoicePicker from "./VoicePicker";
 
 type Row = { prompt: string; title?: string; language?: string; targetDuration?: number };
@@ -32,13 +31,13 @@ export default function BulkCreate() {
   const router = useRouter();
   const [text, setText] = useState(""); const [name, setName] = useState("");
   const [videoType, setVideoType] = useState("YouTube Video");
-  const [s, setS] = useState({ targetDuration: 60, aspectRatio: "R16_9", language: "English", visualSource: "mixed", imageStyle: "cinematic_photo", look: "auto", lookIntensity: 70, voiceStyle: "Professional", voiceId: "", musicStyle: "Auto", captionsEnabled: true, captionStyle: "YouTube Clean", outputQuality: "1080p", musicEnabled: true, voiceEnabled: true, textOverlaysEnabled: true, narrationMode: "narrator" as const });
+  const [s, setS] = useState({ targetDuration: 60, aspectRatio: "R16_9", language: "English", visualSource: "mixed", imageStyle: "cinematic_photo", look: "auto", lookIntensity: 70, voiceStyle: "Professional", voiceId: "", musicStyle: "Auto", captionsEnabled: true, captionStyle: "YouTube Clean", outputQuality: "1080p", musicEnabled: false, voiceEnabled: true, textOverlaysEnabled: true, narrationMode: "narrator" as const });
   const [est, setEst] = useState<{ per: number; total: number; balance: number | null } | null>(null);
   const [busy, setBusy] = useState(false); const [error, setError] = useState<string | null>(null); const [upgrade, setUpgrade] = useState(false);
   const rows = useMemo(() => parseRows(text), [text]);
   useEffect(() => { fetch("/api/brand-kit").then((r) => r.json()).then((d) => { const k = d.brandKit; if (!k) return; setS((x) => ({ ...x, ...(k.voiceId ? { voiceId: k.voiceId } : {}), ...(k.voiceStyle ? { voiceStyle: k.voiceStyle } : {}), ...(k.captionStyle ? { captionStyle: k.captionStyle } : {}), ...(k.look ? { look: k.look } : {}), ...(k.imageStyle ? { imageStyle: k.imageStyle } : {}) })); }).catch(() => {}); }, []);
   const set = (patch: Partial<typeof s>) => setS({ ...s, ...patch });
-  function applyType(id: string) { setVideoType(id); const t = findTemplate(id); if (!t) return; const d = t.defaults; set({ ...(d.aspectRatio ? { aspectRatio: d.aspectRatio } : {}), visualSource: d.visualSource, imageStyle: d.style, look: d.look, lookIntensity: d.lookIntensity, musicStyle: d.musicStyle, captionsEnabled: d.captionsEnabled, captionStyle: d.captionStyle, voiceStyle: d.voiceStyle, voiceEnabled: d.voiceEnabled, textOverlaysEnabled: d.textOverlays, ...(d.voiceId ? { voiceId: d.voiceId } : {}), ...(d.durationSeconds ? { targetDuration: d.durationSeconds } : {}) }); }
+  function applyType(id: string) { setVideoType(id); const t = findTemplate(id); if (!t) return; const d = t.defaults; set({ ...(d.aspectRatio ? { aspectRatio: d.aspectRatio } : {}), visualSource: d.visualSource, musicEnabled: false, imageStyle: d.style, look: d.look, lookIntensity: d.lookIntensity, musicStyle: d.musicStyle, captionsEnabled: d.captionsEnabled, captionStyle: d.captionStyle, voiceStyle: d.voiceStyle, voiceEnabled: d.voiceEnabled, textOverlaysEnabled: d.textOverlays, ...(d.voiceId ? { voiceId: d.voiceId } : {}), ...(d.durationSeconds ? { targetDuration: d.durationSeconds } : {}) }); }
   useEffect(() => {
     const t = setTimeout(async () => {
       const r = await fetch("/api/projects/estimate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...s, narrationMode: "narrator" }) });
@@ -77,14 +76,13 @@ export default function BulkCreate() {
             <Sel label="Duration" value={String(s.targetDuration)} onChange={(v) => set({ targetDuration: Number(v) })} options={DURATION_OPTIONS.map((d) => ({ value: String(d.seconds), label: d.label }))} />
             <Sel label="Format" value={s.aspectRatio} onChange={(v) => set({ aspectRatio: v })} options={ASPECT_RATIOS.map((a) => ({ value: a.value, label: a.label }))} />
             <Sel label="Language" value={s.language} onChange={(v) => set({ language: v })} options={LANGUAGES.map((l) => ({ value: l, label: l }))} />
-            <Sel label="Visuals" value={s.visualSource} onChange={(v) => set({ visualSource: v })} options={VISUAL_SOURCES.filter((v) => !v.value.startsWith("ai_video")).map((v) => ({ value: v.value, label: v.label }))} />
+            <Sel label="Visuals" value={s.visualSource} onChange={(v) => set({ visualSource: v })} options={VISUAL_SOURCES.map((v) => ({ value: v.value, label: v.label }))} />
           </div>
-          {s.visualSource !== "stock_videos" && <div><span className="mb-2 block text-sm text-ink-2">Visual style</span><StylePicker value={s.imageStyle} onChange={(v) => set({ imageStyle: v })} /></div>}
           <details className="rounded-xl border border-line p-3"><summary className="cursor-pointer text-[14px] font-medium">Advanced settings (optional)</summary>
           <div className="mt-3 grid grid-cols-2 gap-4 md:grid-cols-4">
             <Sel label="Look" value={s.look} onChange={(v) => set({ look: v })} options={LOOKS.map((l) => ({ value: l.id, label: l.name }))} />
             <Sel label="Voice style" value={s.voiceStyle} onChange={(v) => set({ voiceStyle: v })} options={VOICE_STYLES.map((v) => ({ value: v, label: v }))} />
-            <Sel label="Music" value={s.musicStyle} onChange={(v) => set({ musicStyle: v })} options={MUSIC_STYLES.map((m) => ({ value: m, label: m }))} />
+            <div className="rounded-xl border border-line px-3 py-2 text-sm text-ink-2">Music off</div>
             <Sel label="Captions" value={s.captionsEnabled ? s.captionStyle : "off"} onChange={(v) => set(v === "off" ? { captionsEnabled: false } : { captionsEnabled: true, captionStyle: v })} options={[{ value: "off", label: "Off" }, ...CAPTION_STYLES.map((c) => ({ value: c, label: c }))]} />
             <Sel label="Quality" value={s.outputQuality} onChange={(v) => set({ outputQuality: v })} options={OUTPUT_QUALITIES.map((q) => ({ value: q.value, label: q.label }))} />
             <div className="md:col-span-3"><VoicePicker value={s.voiceId} onChange={(v) => set({ voiceId: v })} /></div>

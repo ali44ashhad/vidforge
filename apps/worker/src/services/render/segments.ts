@@ -107,10 +107,13 @@ export async function renderShot(shot: TimelineShot, next: TimelineShot | null, 
     vf.push(motionFilter(shot.motion, W, H, frames));
   } else {
     args.push("-f", "lavfi", "-i", `color=c=0x1c1e21:s=${W}x${H}:r=${fps}`);
-    const tf = path.join(dir, `title-${shot.order}.txt`);
-    const t = stripUnrenderable(shot.titleText);
-    fs.writeFileSync(tf, wrap(t, W > H ? 38 : 22));
-    vf.push(drawtext(tf, W, H, "title", t));
+    // Chapter cards may show their label. A missing-footage card must not print the image prompt.
+    const t = shot.card === "chapter" ? stripUnrenderable(shot.titleText) : "";
+    if (t) {
+      const tf = path.join(dir, `title-${shot.order}.txt`);
+      fs.writeFileSync(tf, wrap(t, W > H ? 38 : 22));
+      vf.push(drawtext(tf, W, H, "title", t));
+    }
   }
 
   const overlay = shot.kind !== "title" ? stripUnrenderable(shot.text).slice(0, 60) : "";

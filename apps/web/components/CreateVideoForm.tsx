@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowRight, Loader2, Wand2, Sparkles } from "lucide-react";
-import { ASPECT_RATIOS, DURATION_OPTIONS, LANGUAGES, VISUAL_STYLES, VOICE_STYLES, VISUAL_SOURCES, MUSIC_STYLES, CAPTION_STYLES, OUTPUT_QUALITIES, DEFAULT_MIX, findTemplate, type MixSettings, type CharacterInput } from "@vidforge/shared";
+import { ASPECT_RATIOS, DURATION_OPTIONS, LANGUAGES, VISUAL_STYLES, VOICE_STYLES, VISUAL_SOURCES, CAPTION_STYLES, OUTPUT_QUALITIES, DEFAULT_MIX, findTemplate, type MixSettings, type CharacterInput } from "@vidforge/shared";
 import CharacterEditor from "./CharacterEditor";
 import StylePicker from "./StylePicker";
 import LookPicker from "./LookPicker";
@@ -12,7 +12,6 @@ import PresenterPicker, { PRESENTER_DEFAULT, type PresenterValue } from "./Prese
 import EstimateCard from "./EstimateCard";
 import TypePicker from "./TypePicker";
 import type { ReferenceImage } from "@vidforge/shared";
-import AudioMixControls from "./AudioMixControls";
 import VoicePicker from "./VoicePicker";
 import LogoUpload, { type LogoValue } from "./LogoUpload";
 
@@ -29,14 +28,15 @@ export default function CreateVideoForm({ promptLimit = 2000, planName = "Free" 
   const [voiceSpeed, setVoiceSpeed] = useState(1.0);
   const [visualSource, setVisualSource] = useState("mixed");
   const [imageStyle, setImageStyle] = useState<string>("cinematic_photo");
-  const [musicEnabled, setMusicEnabled] = useState(true);
+  const [musicEnabled, setMusicEnabled] = useState(false);
   const [musicStyle, setMusicStyle] = useState("Auto");
   const [musicCustomPrompt, setMusicCustomPrompt] = useState("");
   const [mix, setMix] = useState<MixSettings>(DEFAULT_MIX);
   const [captionsEnabled, setCaptionsEnabled] = useState(true);
   const [captionStyle, setCaptionStyle] = useState("YouTube Clean");
   const [cta, setCta] = useState("");
-  const [logo, setLogo] = useState<LogoValue>({ logoUrl: null, logoPath: null, logoPosition: "top_right" });
+  const [channelName, setChannelName] = useState("");
+  const [logo, setLogo] = useState<LogoValue>({ logoUrl: null, logoPath: null, logoPosition: "bottom_right" });
   const [characters, setCharacters] = useState<CharacterInput[]>([]);
   const [characterCount, setCharacterCount] = useState(2);
   const [characterVoices, setCharacterVoices] = useState(true);
@@ -64,10 +64,11 @@ export default function CreateVideoForm({ promptLimit = 2000, planName = "Free" 
     if (!from) {
       // brand kit defaults
       fetch("/api/brand-kit").then((r) => r.json()).then((d) => { const k = d.brandKit; if (!k) return;
-        if (k.logoUrl) setLogo({ logoUrl: k.logoUrl, logoPath: k.logoPath, logoPosition: k.logoPosition || "top_right" });
+        if (k.logoUrl) setLogo({ logoUrl: k.logoUrl, logoPath: k.logoPath, logoPosition: k.logoPosition || "bottom_right" });
         if (k.voiceId) setVoiceId(k.voiceId); if (k.voiceStyle) setVoiceStyle(k.voiceStyle); if (k.captionStyle) setCaptionStyle(k.captionStyle);
         if (k.look) setLook(k.look); if (k.imageStyle && !type) setImageStyle(k.imageStyle); if (k.accentColor) setBanners((b) => ({ ...b, color: k.accentColor }));
         if (k.outro) setCta(k.outro);
+        if (typeof k.channelName === "string" && k.channelName) setChannelName(k.channelName);
       }).catch(() => {});
       return;
     }
@@ -76,11 +77,12 @@ export default function CreateVideoForm({ promptLimit = 2000, planName = "Free" 
       setPrompt(s.prompt ?? ""); setScriptVerbatim(!!s.scriptVerbatim); setTargetDuration(s.targetDuration ?? 60); setAspectRatio(s.aspectRatio ?? "R16_9"); setVideoType(s.videoType ?? "YouTube Video");
       setLanguage(s.language ?? "English"); setVisualSource(s.visualSource ?? "mixed"); setImageStyle(s.imageStyle ?? "cinematic_photo"); setStoryStyle(s.imageStyle ?? "storybook");
       setVoiceStyle(s.voiceStyle ?? "Professional"); setVoiceId(s.voiceId ?? ""); setVoiceSpeed(s.voiceSpeed ?? 1); setCaptionsEnabled(!!s.captionsEnabled); setCaptionStyle(s.captionStyle ?? "YouTube Clean");
-      setMusicEnabled(!!s.musicEnabled); setMusicStyle(s.musicStyle ?? "Auto"); setMusicCustomPrompt(s.musicCustomPrompt ?? ""); setMix(s.mixSettings ?? DEFAULT_MIX); setCta(s.cta ?? "");
+      setMusicEnabled(false); setMusicStyle(s.musicStyle ?? "Auto"); setMusicCustomPrompt(s.musicCustomPrompt ?? ""); setMix(s.mixSettings ?? DEFAULT_MIX); setCta(s.cta ?? "");
       setOutputQuality(s.outputQuality ?? "1080p"); setAiVideoResolution(s.aiVideoResolution ?? "720p"); setVoiceEnabled(s.voiceEnabled !== false); setTextOverlaysEnabled(s.textOverlaysEnabled !== false);
       setLook(s.look ?? "auto"); setLookIntensity(s.lookIntensity ?? 70); setReferenceImages(s.referenceImages ?? []); if (s.banners) setBanners(s.banners);
       setNarrationMode(s.storyMode ? (s.narratorEnabled === false ? "characters_only" : "characters") : "narrator"); setCharacters(s.characters ?? []); setCharacterCount(s.characterCount ?? 2); setSpeechMode(s.speechMode ?? "tts");
       if (s.logoUrl) setLogo({ logoUrl: s.logoUrl, logoPath: s.logoPath, logoPosition: s.logoPosition });
+      setChannelName(s.channelName ?? "");
       if (s.presenterMode === "ai") setPresenter({ presenterMode: "ai", presenterImageUrl: s.presenterImageUrl, presenterImagePath: s.presenterImagePath, presenterPosition: s.presenterPosition ?? "bottom_left", presenterSize: s.presenterSize ?? 34, presenterRing: s.presenterRing ?? "#6C4CFF", presenterShape: s.presenterShape === "cutout" ? "cutout" : "circle" });
       setPrefilled(s.title ?? "previous video");
     }).catch(() => {});
@@ -101,7 +103,7 @@ export default function CreateVideoForm({ promptLimit = 2000, planName = "Free" 
     if (d.aspectRatio) setAspectRatio(d.aspectRatio);
     setVisualSource(d.visualSource); setImageStyle(d.style); setStoryStyle(d.style);
     setLook(d.look); setLookIntensity(d.lookIntensity);
-    setMusicStyle(d.musicStyle); setMusicEnabled(true);
+    setMusicStyle(d.musicStyle); setMusicEnabled(false);
     setCaptionsEnabled(d.captionsEnabled); setCaptionStyle(d.captionStyle);
     setVoiceStyle(d.voiceStyle); setVoiceEnabled(d.voiceEnabled); if (d.voiceId) setVoiceId(d.voiceId);
     setNarrationMode(d.narrationMode as "narrator" | "characters" | "characters_only"); setTextOverlaysEnabled(d.textOverlays);
@@ -119,8 +121,8 @@ export default function CreateVideoForm({ promptLimit = 2000, planName = "Free" 
         prompt, targetDuration, aspectRatio, videoType, language, voiceStyle, voiceId, voiceSpeed,
         // characters/story mode needs AI visuals; keep an AI-video choice, otherwise fall back to AI images
         visualSource: isStory && !visualSource.startsWith("ai_video") ? "ai_images" : visualSource, imageStyle: isStory ? storyStyle : imageStyle,
-        musicEnabled, musicStyle: isStory && musicStyle === "Auto" ? "Ambient" : musicStyle, musicCustomPrompt, mixSettings: mix,
-        captionsEnabled, captionStyle, cta, ...logo,
+        musicEnabled: false, musicStyle: isStory && musicStyle === "Auto" ? "Ambient" : musicStyle, musicCustomPrompt, mixSettings: mix,
+        captionsEnabled, captionStyle, cta, channelName, ...logo,
         characters, characterCount, characterVoices, allowStockFallback, scriptVerbatim, narrationMode: isStory ? (narrationMode === "characters_only" ? "characters_only" : "characters") : "narrator",
         outputQuality, aiVideoResolution, voiceEnabled, textOverlaysEnabled, look, lookIntensity, referenceImages, ...presenter,
         banners: banners.top || banners.bottom ? banners : null,
@@ -149,7 +151,7 @@ export default function CreateVideoForm({ promptLimit = 2000, planName = "Free" 
   const summary: [string, string][] = [
     ["Video type", template?.name ?? videoType], ["Duration", `${DURATION_OPTIONS.find((d) => d.seconds === targetDuration)?.label ?? `${targetDuration}s`} · ${aspectRatio === "R9_16" ? "9:16 Shorts" : "16:9 YouTube"}`], ["Language", language],
     ["Voice", voiceEnabled ? voiceLabel : "No voiceover"], ["Visual style", visualSource === "stock_videos" ? "Stock footage" : styleName(isStory ? storyStyle : imageStyle)], ["Visuals", vs?.label ?? visualSource],
-    ["Look", look === "auto" ? "Auto (AI decides)" : look.replace(/_/g, " ")], ["Captions & text", [captionsEnabled && voiceEnabled && "captions", textOverlaysEnabled && "on-screen text"].filter(Boolean).join(", ") || "off"], ["Music", musicEnabled ? musicStyle : "off"], ["Quality", `${outputQuality}${isAiVideo ? ` · clips ${aiVideoResolution}` : ""}`], ...(presenter.presenterMode === "ai" ? ([["Presenter", `Face cam ${presenter.presenterSize}% ${presenter.presenterPosition.replace("_", " ")}`]] as [string, string][]) : []),
+    ["Look", look === "auto" ? "Auto (AI decides)" : look.replace(/_/g, " ")], ["Captions & text", [captionsEnabled && voiceEnabled && "captions", textOverlaysEnabled && "on-screen text"].filter(Boolean).join(", ") || "off"], ["Channel", channelName.trim() || "none"], ["Channel logo", logo.logoUrl ? logo.logoPosition.replace(/_/g, " ") : "none"], ["Music", musicEnabled ? musicStyle : "off"], ["Quality", `${outputQuality}${isAiVideo ? ` · clips ${aiVideoResolution}` : ""}`], ...(presenter.presenterMode === "ai" ? ([["Presenter", `Face cam ${presenter.presenterSize}% ${presenter.presenterPosition.replace("_", " ")}`]] as [string, string][]) : []),
   ];
   const minutesEst = Math.ceil(2 + targetDuration / 60 * (isAiVideo ? 6 : visualSource === "stock_videos" ? 1.5 : 3));
 
@@ -176,7 +178,7 @@ export default function CreateVideoForm({ promptLimit = 2000, planName = "Free" 
             </div>
             <div className="rounded-2xl border border-line bg-panel p-4">
               <textarea className="min-h-[150px] w-full resize-y bg-transparent text-[16px] leading-relaxed outline-none placeholder:text-ink-3" maxLength={promptLimit} placeholder="Create a 7-minute faceless documentary about how the internet changed the world. Include key milestones, real examples and a strong hook in the first 10 seconds." value={prompt} onChange={(e) => setPrompt(e.target.value)} />
-              <div className="flex items-center justify-between border-t border-line pt-3"><span className={`text-xs ${prompt.length >= promptLimit ? "text-warning" : "text-ink-3"}`}>{prompt.length.toLocaleString()}/{promptLimit.toLocaleString()} characters{prompt.length >= promptLimit && <> · <a href="/billing" className="underline">upgrade for longer scripts</a></>} · {planName} plan</span><button type="button" className="btn-gradient flex items-center gap-2 px-4 py-2 text-sm" disabled={!canGo || busy} onClick={submit} title="Generate now with the recommended settings for this video type">{busy ? <Loader2 size={16} className="animate-spin" /> : <Wand2 size={16} />} Generate with AI</button></div>
+              <div className="flex items-center justify-between border-t border-line pt-3"><span className={`text-xs ${prompt.length >= promptLimit ? "text-warning" : "text-ink-3"}`}>{prompt.length.toLocaleString("en-US")}/{promptLimit.toLocaleString("en-US")} characters{prompt.length >= promptLimit && <> · <a href="/billing" className="underline">upgrade for longer scripts</a></>} · {planName} plan</span><button type="button" className="btn-gradient flex items-center gap-2 px-4 py-2 text-sm" disabled={!canGo || busy} onClick={submit} title="Generate now with the recommended settings for this video type">{busy ? <Loader2 size={16} className="animate-spin" /> : <Wand2 size={16} />} Generate with AI</button></div>
             </div>
             <label className="flex items-center gap-2 text-[14px] text-ink-2"><input type="checkbox" checked={scriptVerbatim} onChange={(e) => setScriptVerbatim(e.target.checked)} /> This is my finished script — speak it word for word</label>
             <div><div className="mb-2 text-[13px] text-ink-3">Quick suggestions</div><div className="flex flex-wrap gap-2">{SUGGESTIONS.map((q) => <button key={q} type="button" className="rounded-full border border-line px-3 py-1.5 text-[13px] text-ink-2 hover:border-accent hover:text-ink" onClick={() => setPrompt(q)}>{q}</button>)}</div></div>
@@ -222,6 +224,17 @@ export default function CreateVideoForm({ promptLimit = 2000, planName = "Free" 
                   {(isStory || visualSource === "ai_images") && <label className="mt-3 flex items-center gap-2 text-[13px] text-ink-2"><input type="checkbox" checked={allowStockFallback} onChange={(e) => setAllowStockFallback(e.target.checked)} /> If an AI image fails after 3 tries, use a stock photo instead of a title card</label>}
                 </div>
               ) : <div className="rounded-2xl border border-line bg-panel p-5 text-[14px] text-ink-2">Stock footage is selected — visual style applies to AI images and video. Switch Visuals in step 1 to use a style.</div>}
+              <div className="rounded-2xl border border-line bg-panel p-5">
+                <div className="text-[15px] font-semibold">Channel</div>
+                <label className="mt-3 block text-[14px]">
+                  <span className="mb-1 block text-ink-2">Channel name</span>
+                  <input className="field" placeholder="Your channel name" maxLength={80} value={channelName} onChange={(e) => setChannelName(e.target.value)} />
+                  <span className="mt-1 block text-[12px] text-ink-3">Shown under Like &amp; Subscribe at the end of the video.</span>
+                </label>
+                <div className="mb-3 mt-5 text-[15px] font-semibold">Channel logo</div>
+                <p className="mb-3 text-[13px] text-ink-3">Optional. A small badge stays in the corner of the whole video.</p>
+                <LogoUpload value={logo} onChange={setLogo} />
+              </div>
               <details className="rounded-2xl border border-line bg-panel p-4"><summary className="cursor-pointer text-[14px] font-medium">Captions & on-screen text</summary>
                 <div className="mt-3 grid gap-4 md:grid-cols-2">
                   <div className="space-y-2 text-[14px]"><label className={`flex items-center gap-2 ${voiceEnabled ? "" : "opacity-40"}`}><input type="checkbox" checked={captionsEnabled && voiceEnabled} disabled={!voiceEnabled} onChange={(e) => setCaptionsEnabled(e.target.checked)} /> Burn captions into the video</label><label className="flex items-center gap-2"><input type="checkbox" checked={textOverlaysEnabled} onChange={(e) => setTextOverlaysEnabled(e.target.checked)} /> On-screen text (titles, labels)</label></div>
@@ -243,12 +256,8 @@ export default function CreateVideoForm({ promptLimit = 2000, planName = "Free" 
                 </div>
               </div>
               <div className="rounded-2xl border border-line bg-panel p-4">
-                <label className="flex items-center justify-between text-[15px] font-semibold">Background music <input type="checkbox" checked={musicEnabled} onChange={(e) => setMusicEnabled(e.target.checked)} /></label>
-                {musicEnabled && <div className="mt-3 space-y-3">
-                  <Select label="Music style" value={musicStyle} onChange={setMusicStyle} options={MUSIC_STYLES.map((m) => ({ value: m, label: m }))} />
-                  {musicStyle === "Custom" && <textarea className="field" rows={2} placeholder="Warm acoustic guitar, slow tempo, hopeful, no vocals" value={musicCustomPrompt} onChange={(e) => setMusicCustomPrompt(e.target.value)} />}
-                  <AudioMixControls value={mix} onChange={setMix} musicEnabled={musicEnabled} onMusicEnabled={setMusicEnabled} />
-                </div>}
+                <div className="text-[15px] font-semibold">Background music</div>
+                <p className="mt-2 text-[13px] text-ink-3">Off. Videos render with the voiceover only.</p>
               </div>
               <div className="rounded-2xl border border-line bg-panel p-4">
                 <div className="text-[15px] font-semibold">Finishing look</div>
@@ -297,7 +306,6 @@ export default function CreateVideoForm({ promptLimit = 2000, planName = "Free" 
                 <div className="mt-4 space-y-5">
                   <div className="grid gap-4 md:grid-cols-2"><Select label="Output quality" value={outputQuality} onChange={setOutputQuality} options={OUTPUT_QUALITIES.map((q) => ({ value: q.value, label: q.label }))} />{isAiVideo && <Select label="AI clip resolution" value={aiVideoResolution} onChange={setAiVideoResolution} options={[{ value: "720p", label: "720p (cheaper)" }, { value: "1080p", label: "1080p" }]} />}</div>
                   <div><div className="mb-2 text-[13px] text-ink-2">Ad banners (burned in)</div><div className="grid gap-2 md:grid-cols-[1fr_140px_90px]"><input className="field" placeholder="Top headline" value={banners.top} onChange={(e) => setBanners({ ...banners, top: e.target.value })} /><input className="field" placeholder="Highlight word" value={banners.topHighlight} onChange={(e) => setBanners({ ...banners, topHighlight: e.target.value })} /><input type="color" className="field h-[44px] p-1" value={banners.color} onChange={(e) => setBanners({ ...banners, color: e.target.value })} /><input className="field md:col-span-3" placeholder="Bottom CTA" value={banners.bottom} onChange={(e) => setBanners({ ...banners, bottom: e.target.value })} /></div></div>
-                  <LogoUpload value={logo} onChange={setLogo} />
                   <label className="block text-[14px]"><span className="mb-1 block text-ink-2">Call to action at the end</span><input className="field" placeholder="Subscribe for weekly explainers" value={cta} onChange={(e) => setCta(e.target.value)} /></label>
                 </div>
               </details>
@@ -308,12 +316,13 @@ export default function CreateVideoForm({ promptLimit = 2000, planName = "Free" 
                 <div className={`relative overflow-hidden rounded-xl bg-panel-2 ${aspectRatio === "R9_16" ? "mx-auto aspect-[9/16] max-h-[420px]" : "aspect-video"}`}>
                   <div className="absolute inset-0 bg-cover bg-center opacity-80" style={{ backgroundImage: `url(/assets/y2ube/gen/output_demo.jpg)` }} />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
+                  {logo.logoUrl && <img src={logo.logoUrl} alt="" className={`absolute h-10 w-10 rounded-full object-cover shadow-lg ring-1 ring-white/30 ${logo.logoPosition.startsWith("top") ? "top-3" : "bottom-3"} ${logo.logoPosition.endsWith("right") ? "right-3" : "left-3"}`} />}
                   <div className="absolute inset-x-5 bottom-5"><div className="display text-2xl font-bold uppercase leading-tight text-white md:text-3xl">{(prompt.split(/[.!?]/)[0] || "Your title").slice(0, 60)}</div><div className="mt-1 text-[12px] text-white/70">{template?.name} · {look === "auto" ? "AI-chosen look" : look.replace(/_/g, " ")}</div></div>
                 </div>
               </div>
               <div className="rounded-2xl border border-accent/40 bg-accent/10 p-5">
                 <div className="flex items-center gap-2 text-[15px] font-semibold"><Sparkles size={16} className="text-accent" /> Ready to generate!</div>
-                <p className="mt-1 text-[14px] text-ink-2">This will create a complete video: script → storyboard → {voiceEnabled ? "voiceover → " : ""}visuals → {musicEnabled ? "music → " : ""}{captionsEnabled && voiceEnabled ? "captions → " : ""}rendering → thumbnails & SEO package.</p>
+                <p className="mt-1 text-[14px] text-ink-2">This will create a complete video: script → storyboard → {voiceEnabled ? "voiceover → " : ""}visuals → {musicEnabled ? "music → " : ""}{captionsEnabled && voiceEnabled ? "captions → " : ""}rendering → SEO package.</p>
                 {error && <p className="mt-3 text-[14px] text-danger">{error}</p>}
                 <div className="mt-4 flex flex-col gap-2 sm:flex-row"><button className="btn-gradient flex items-center justify-center gap-2 text-[15px]" onClick={submit} disabled={busy || !canGo}>{busy ? <Loader2 size={18} className="animate-spin" /> : <ArrowRight size={18} />} Generate video</button><button type="button" className="btn-ghost" onClick={() => goto(step - 1)}>Back</button></div>
               </div>

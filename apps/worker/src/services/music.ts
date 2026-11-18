@@ -4,6 +4,7 @@
 import { env, requireKey } from "../env";
 import { fetchJson } from "../lib/http";
 import { sleep } from "../lib/log";
+import { y2fetch, y2ubeRemote } from "./y2ube";
 
 const BASE = "https://api.kie.ai/api/v1";
 
@@ -11,7 +12,17 @@ function headers() {
   return { Authorization: `Bearer ${requireKey("KIE_API_KEY")}`, "Content-Type": "application/json" };
 }
 
+export interface MusicResult { audioUrl: string; duration: number; id: string }
+
+const remoteMusic = new Map<string, MusicResult>();
+
 export async function submitMusic(prompt: string, model = env.KIE_MODEL): Promise<string> {
+  if (y2ubeRemote()) {
+    const r = await y2fetch<MusicResult>("/api/v1/providers/music", { method: "POST", body: { prompt, model }, timeoutMs: 540_000 });
+    const taskId = `y2:${r.id}`;
+    remoteMusic.set(taskId, r);
+    return taskId;
+  }
   const data = await fetchJson<{ code: number; msg: string; data?: { taskId: string } }>(`${BASE}/generate`, {
     method: "POST",
     headers: headers(),
@@ -27,10 +38,11 @@ export async function submitMusic(prompt: string, model = env.KIE_MODEL): Promis
   return data.data.taskId;
 }
 
-export interface MusicResult { audioUrl: string; duration: number; id: string }
-
 /** Polls record-info until all tracks are ready. Returns the longest track. */
 export async function waitForMusic(taskId: string, timeoutMs = 8 * 60 * 1000, onTick?: (status: string) => void): Promise<MusicResult> {
+  const remote = remoteMusic.get(taskId);
+  if (remote) return remote;
+  if (taskId.startsWith("y2:")) throw new Error("y2ube music result was lost before download. Retry the music stage.");
   const started = Date.now();
   for (;;) {
     const data = await fetchJson<{

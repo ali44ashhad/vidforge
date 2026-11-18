@@ -64,7 +64,7 @@ export const voiceGeneration: StageDefinition = {
     const narratorStyle = p.videoType === "Kids Story" ? "Storytelling" : p.voiceStyle;
     // narrator: explicit choice → template/brand default → AI casting from the community library → standard pool
     const preset = p.voiceId || (await voiceDefaultFor(p.language));
-    const aiNarrator = preset ? null : await aiPickVoice({ projectId: p.id, language: p.language, videoType: p.videoType, topic: p.title || p.prompt, voiceStyle: narratorStyle });
+    const aiNarrator = preset || providerName() === "kie" ? null : await aiPickVoice({ projectId: p.id, language: p.language, videoType: p.videoType, topic: p.title || p.prompt, voiceStyle: narratorStyle });
     const voiceId = await resolveVoiceId(narratorStyle, preset || aiNarrator || "", p.language, prisma as never);
     if (p.voiceId !== voiceId) await prisma.project.update({ where: { id: p.id }, data: { voiceId } });
     ctx.log(`voice ${voiceId} via ${providerName()}, ${scenes.length} segments`);

@@ -21,16 +21,13 @@ export const env = {
   DEEPSEEK_API_KEY: process.env.DEEPSEEK_API_KEY || "",
   DEEPSEEK_MODEL: process.env.DEEPSEEK_MODEL || "deepseek-chat",
   PEXELS_API_KEY: process.env.PEXELS_API_KEY || "",
-  /// "elevenlabs" (default) or "abhibots"
+  PIXABAY_API_KEY: process.env.PIXABAY_API_KEY || "",
   VOICE_PROVIDER: (process.env.VOICE_PROVIDER || "elevenlabs").toLowerCase(),
-  /// "kie" (default), "abhibots" or "snapgen"
   IMAGE_PROVIDER: (process.env.IMAGE_PROVIDER || "kie").toLowerCase(),
   SNAPGEN_API_KEY: process.env.SNAPGEN_API_KEY || "",
   VIDEO_CONCURRENCY: Number(process.env.VIDEO_CONCURRENCY || 3),
   /// true = generate an image first and animate it (consistent characters); false = pure text-to-video, no image step
   VIDEO_FROM_IMAGE: (process.env.VIDEO_FROM_IMAGE || "true").toLowerCase() !== "false",
-  ABHIBOTS_API_KEY: process.env.ABHIBOTS_API_KEY || "",
-  ABHIBOTS_BASE_URL: (process.env.ABHIBOTS_BASE_URL || "https://app.abhibots.com/api").replace(/\/$/, ""),
   // Voice provider: ElevenLabs or any ElevenLabs-compatible API (e.g. a reseller). Set VOICE_API_BASE_URL to switch.
   ELEVENLABS_API_KEY: process.env.VOICE_API_KEY || process.env.ELEVENLABS_API_KEY || "",
   VOICE_API_BASE_URL: (process.env.VOICE_API_BASE_URL || "https://api.elevenlabs.io/v1").replace(/\/$/, ""),
@@ -50,7 +47,17 @@ export const env = {
 };
 
 /** Throws a clear message when a stage needs a key that is not configured. */
-export function requireKey(name: "DEEPSEEK_API_KEY" | "PEXELS_API_KEY" | "ELEVENLABS_API_KEY" | "KIE_API_KEY" | "ABHIBOTS_API_KEY" | "SNAPGEN_API_KEY"): string {
+export function requireKey(name: "DEEPSEEK_API_KEY" | "PEXELS_API_KEY" | "ELEVENLABS_API_KEY" | "KIE_API_KEY" | "SNAPGEN_API_KEY"): string {
+  if (name === "DEEPSEEK_API_KEY") {
+    const deepseek = (process.env.DEEPSEEK_API_KEY || env.DEEPSEEK_API_KEY || "").trim();
+    if (deepseek) return deepseek;
+    throw new Error("DEEPSEEK_API_KEY is not set in .env");
+  }
+  if (name === "PEXELS_API_KEY") {
+    const k = process.env.PIXABAY_API_KEY || env.PEXELS_API_KEY;
+    if (k) return k;
+    throw new Error("Neither PEXELS_API_KEY nor PIXABAY_API_KEY is set in .env");
+  }
   const v = env[name];
   if (!v) throw new Error(`${name === "ELEVENLABS_API_KEY" ? "VOICE_API_KEY / ELEVENLABS_API_KEY" : name} is not set in .env`);
   return v;

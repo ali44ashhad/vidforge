@@ -44,7 +44,7 @@ export const fetchingMedia: StageDefinition = {
     const strategy = (p.strategy as Strategy | null) ?? null;
     const ratio = { ...(ASPECT_RATIOS.find((a) => a.value === p.aspectRatio) ?? ASPECT_RATIOS[0]), ...frameSize(p.aspectRatio, p.outputQuality) };
     const orientation: Orientation = ratio.width > ratio.height ? "landscape" : ratio.width < ratio.height ? "portrait" : "square";
-    const requested = p.visualSource || "mixed";
+    const requested = (p.visualSource || "mixed") as "mixed" | "stock_videos" | "ai_images" | "ai_video_hero" | "ai_videos";
     // user-uploaded references: subject/character/location go into every generation; style frames too (as look guidance)
     const userRefs = ((p.referenceImages as { url: string; path: string; kind: string; label: string }[] | null) ?? []).filter((r) => r.path || r.url);
     const refSource = (r: { url: string; path: string }) => (/^https?:\/\//.test(r.url) && !/localhost|127\.0\.0\.1/.test(r.url) ? r.url : r.path);
@@ -52,13 +52,13 @@ export const fetchingMedia: StageDefinition = {
       ? " Reference images are attached: " + userRefs.map((r, i) => `image ${i + 1} is ${r.kind === "style" ? "a STYLE reference — match its colours, lighting and rendering style, not its content" : `the ${r.kind}${r.label ? ` "${r.label}"` : ""} — it must appear exactly as shown`}`).join("; ") + "."
       : "";
     if (userRefs.length) ctx.log(`using ${userRefs.length} user reference image(s): ${userRefs.map((r) => `${r.kind}${r.label ? ":" + r.label : ""}`).join(", ")}`);
-    const aiVideo = requested === "ai_videos" ? "all" : requested === "ai_video_hero" ? "hero" : "none";
+    const aiVideo: "all" | "hero" | "none" = requested === "ai_videos" ? "all" : requested === "ai_video_hero" ? "hero" : "none";
     // Long videos run on SnapGen, short ones on whatever VIDEO_PROVIDER says (Kie/Veo 3 today).
     // LONGFORM_MIN_SECONDS sets the boundary; VIDEO_PROVIDER_LONGFORM overrides which provider long videos use.
     const longForm = p.targetDuration >= Number(process.env.LONGFORM_MIN_SECONDS || 300);
-    const videoProvider = longForm ? (process.env.VIDEO_PROVIDER_LONGFORM || "snapgen") : (process.env.VIDEO_PROVIDER || "snapgen");
+    const videoProvider = longForm ? (process.env.VIDEO_PROVIDER_LONGFORM || process.env.VIDEO_PROVIDER || "snapgen") : (process.env.VIDEO_PROVIDER || "snapgen");
     if (aiVideo !== "none") ctx.log(`AI video provider: ${videoProvider}${longForm ? " (long-form)" : ""}`);
-    const mode = p.storyMode && aiVideo === "none" ? "ai_images" : (aiVideo !== "none" ? "ai_images" : requested);
+    const mode: "stock_videos" | "ai_images" | "mixed" = requested === "stock_videos" ? "stock_videos" : requested === "mixed" ? "mixed" : "ai_images";
     const preset = findStyle(p.imageStyle);
     const style = preset ? preset.id : p.storyMode
       ? (p.videoType === "Kids Story" ? `${p.imageStyle || "Storybook illustration"}, children's book, friendly, bright colours` : (p.imageStyle || "Cinematic photo"))
@@ -72,7 +72,7 @@ export const fetchingMedia: StageDefinition = {
     // keeps the face, the words describe someone filmable.
     const castLook = new Map<string, string>();
     const describeCast = (text: string) => { for (const [name, look] of castLook) text = text.split(name).join(look); return text; };
-    if (p.storyMode) {
+    if (p.storyMode && mode !== "stock_videos") {
       const pcs = await prisma.projectCharacter.findMany({ where: { projectId: p.id }, include: { character: true }, orderBy: { order: "asc" } });
       for (const { character: c } of pcs) castLook.set(c.name, c.description.split(/[.;]/)[0].trim().slice(0, 90) || c.name);
       await mapLimit(pcs, env.IMAGE_CONCURRENCY, async ({ character: c }) => {
@@ -287,10 +287,10 @@ export const fetchingMedia: StageDefinition = {
           } else throw e;
         }
         const url = g.url, taskId = g.id, provider = g.provider, model = g.model;
-        const creator = { kie: "Kie.ai (nano-banana)", abhibots: "AbhiBots (nano_banana_2)", snapgen: `SnapGen (${model})` }[provider];
+        const creator = { kie: "Kie.ai (nano-banana)", snapgen: `SnapGen (${model})` }[provider];
         return {
           provider, providerAssetId: taskId, type: "IMAGE", url, previewUrl: url, creator,
-          creatorUrl: { kie: "https://kie.ai", abhibots: "https://app.abhibots.com", snapgen: "https://snapgen.ai" }[provider], sourceUrl: { kie: "https://kie.ai", abhibots: "https://app.abhibots.com", snapgen: "https://snapgen.ai" }[provider],
+          creatorUrl: { kie: "https://kie.ai", snapgen: "https://snapgen.ai" }[provider], sourceUrl: { kie: "https://kie.ai", snapgen: "https://snapgen.ai" }[provider],
           width: ratio.width, height: ratio.height, slugWords: [], meta: { prompt, generationId: taskId, model, references: inShot },
         } as Candidate & { meta: Prisma.InputJsonValue };
       } catch (e) {
@@ -376,6 +376,21 @@ export const fetchingMedia: StageDefinition = {
       await ctx.report(Math.round((counts.processed / shots.length) * 100), `${counts.processed}/${shots.length}`);
     });
 
-    ctx.log(`media done (${requested}): ${counts.videos} stock videos, ${counts.aiVideos} AI videos, ${counts.aiImages} AI images, ${counts.images} photos, ${counts.missing} title cards`);
+    // A shot with no file becomes a black card that prints the image prompt. Reuse the nearest real clip instead.
+    const filled = await loadShots(p.id);
+    const ids = filled.map((s) => s.mediaAssetId);
+    let reused = 0;
+    for (let i = 0; i < filled.length; i++) {
+      if (ids[i]) continue;
+      let donor: string | null = null;
+      for (let j = i - 1; j >= 0 && !donor; j--) donor = ids[j];
+      for (let j = i + 1; j < ids.length && !donor; j++) donor = ids[j];
+      if (!donor) continue;
+      await prisma.shot.update({ where: { id: filled[i].id }, data: { mediaAssetId: donor } });
+      ids[i] = donor;
+      reused++;
+    }
+    if (reused) ctx.log(`reused a nearby clip for ${reused} shot(s) that had no stock — no prompt cards`);
+    ctx.log(`media done (${requested}): ${counts.videos} stock videos, ${counts.aiVideos} AI videos, ${counts.aiImages} AI images, ${counts.images} photos, ${counts.missing} without their own clip`);
   },
 };

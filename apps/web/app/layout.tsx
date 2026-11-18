@@ -19,7 +19,7 @@ export const metadata: Metadata = {
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const user = await getUser();
   return (
-    <html lang="en" suppressHydrationWarning className={`${inter.variable} ${manrope.variable} ${notoDeva.variable} ${notoGuru.variable}`}>
+    <html lang="en" suppressHydrationWarning data-scroll-behavior="smooth" className={`${inter.variable} ${manrope.variable} ${notoDeva.variable} ${notoGuru.variable}`}>
       <head><script dangerouslySetInnerHTML={{ __html: `try{localStorage.removeItem("y2-theme");document.documentElement.removeAttribute("data-theme")}catch(e){}` }} /><meta name="color-scheme" content="dark" /></head>
       <body className="min-h-screen" suppressHydrationWarning>
         {user ? <DashboardShell user={user}>{children}</DashboardShell> : <main className="min-h-screen">{children}</main>}

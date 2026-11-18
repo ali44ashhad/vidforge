@@ -6,6 +6,8 @@
 import { z } from "zod";
 import { env, requireKey } from "../env";
 import { fetchJson } from "../lib/http";
+import { y2fetch, y2ubeRemote } from "./y2ube";
+import { kieChat } from "./kieChat";
 import { StrategySchema, ShotSchema, LineSchema, CharacterSchema, WORDS_PER_MINUTE, speechRate, scriptRuleFor, findStyle, findTemplate, VIDEO_TEMPLATES, type VideoTemplate, type Strategy, type CharacterSpec, type Line } from "@vidforge/shared";
 
 function languageRule(language: string): string {
@@ -17,13 +19,14 @@ const API = "https://api.deepseek.com/chat/completions";
 
 type Msg = { role: "system" | "user" | "assistant"; content: string };
 
-async function chatJson(messages: Msg[], maxTokens = 8000, temperature = 0.7): Promise<string> {
+async function deepseekChat(messages: Msg[], maxTokens: number, temperature: number): Promise<string> {
   const key = requireKey("DEEPSEEK_API_KEY");
+  const model = env.DEEPSEEK_MODEL === "deepseek-chat" ? "deepseek-flash" : env.DEEPSEEK_MODEL;
   const data = await fetchJson<{ choices: { message: { content: string } }[] }>(API, {
     method: "POST",
     headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
     body: JSON.stringify({
-      model: env.DEEPSEEK_MODEL,
+      model,
       messages,
       temperature,
       max_tokens: maxTokens,
@@ -31,6 +34,20 @@ async function chatJson(messages: Msg[], maxTokens = 8000, temperature = 0.7): P
     }),
   });
   return data.choices[0]?.message?.content ?? "";
+}
+
+/** Provider call. Gateway handlers use this directly so a y2_ client never recurses. */
+export async function completeChat(messages: Msg[], maxTokens = 8000, temperature = 0.7): Promise<string> {
+  if ((process.env.LLM_PROVIDER || "").toLowerCase() === "kie") return kieChat(messages, maxTokens, temperature);
+  return deepseekChat(messages, maxTokens, temperature);
+}
+
+async function chatJson(messages: Msg[], maxTokens = 8000, temperature = 0.7): Promise<string> {
+  if (y2ubeRemote()) {
+    const r = await y2fetch<{ text?: string }>("/api/v1/providers/llm", { method: "POST", body: { messages, maxTokens, temperature }, timeoutMs: 180_000 });
+    return r.text ?? "";
+  }
+  return completeChat(messages, maxTokens, temperature);
 }
 
 function extractJson(text: string): unknown {

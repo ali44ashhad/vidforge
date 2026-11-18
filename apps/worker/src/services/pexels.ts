@@ -5,11 +5,12 @@
 import { prisma, type Prisma } from "@vidforge/db";
 import { requireKey } from "../env";
 import { fetchJson, HttpError } from "../lib/http";
+import { y2fetch, y2ubeRemote } from "./y2ube";
 
 export type Orientation = "landscape" | "portrait" | "square";
 
 export interface Candidate {
-  provider: "pexels" | "kie" | "abhibots" | "snapgen";
+  provider: "pexels" | "kie" | "snapgen";
   providerAssetId: string;
   type: "VIDEO" | "IMAGE";
   url: string;         // download URL (best fitting file)
@@ -65,7 +66,114 @@ function pickVideoFile(v: PexelsVideo, targetWidth: number, targetHeight: number
   return sorted.find((f) => Math.max(f.width!, f.height!) >= targetLong) ?? sorted[sorted.length - 1];
 }
 
+interface PixabayVideoFile { url: string; width: number; height: number; size: number }
+interface PixabayVideoHit {
+  id: number; pageURL: string; duration: number; picture_id: string;
+  videos: { large?: PixabayVideoFile; medium?: PixabayVideoFile; small?: PixabayVideoFile; tiny?: PixabayVideoFile };
+  user: string; tags: string;
+}
+interface PixabayPhotoHit {
+  id: number; pageURL: string; largeImageURL: string; webformatURL: string; previewURL: string;
+  imageWidth: number; imageHeight: number; user: string; tags: string;
+}
+
+function coverrKey(): string {
+  return process.env.COVERR_API_KEY?.trim() || "";
+}
+
+/** Coverr is videos only. Use it when it is the only stock key, or when STOCK_PROVIDER=coverr. */
+function useCoverr(): boolean {
+  const key = coverrKey();
+  if (!key) return false;
+  if (process.env.STOCK_PROVIDER === "coverr") return true;
+  return !process.env.PEXELS_API_KEY?.trim() && !process.env.PIXABAY_API_KEY?.trim();
+}
+
+interface CoverrHit {
+  id: string;
+  title?: string;
+  poster?: string;
+  thumbnail?: string;
+  tags?: string[];
+  is_vertical?: boolean;
+  duration?: number;
+  max_width?: number;
+  max_height?: number;
+  urls?: { mp4?: string; mp4_download?: string; mp4_preview?: string };
+}
+
+/** Fresh request every time: Coverr's mp4 links are signed and go stale if cached for days. */
+async function searchCoverr(query: string, orientation: Orientation, perPage: number): Promise<Candidate[]> {
+  const data = await fetchJson<{ hits?: CoverrHit[] }>(
+    `https://api.coverr.co/videos?query=${encodeURIComponent(query)}&page_size=${perPage}&urls=true`,
+    { headers: { "x-api-key": coverrKey() } },
+  );
+  return (data.hits ?? []).flatMap((v) => {
+    const url = v.urls?.mp4_download || v.urls?.mp4;
+    if (!url || !v.id) return [];
+    const vertical = !!v.is_vertical;
+    if (orientation === "landscape" && vertical) return [];
+    if (orientation === "portrait" && !vertical) return [];
+    const tags = [...(v.tags ?? []), ...(v.title ?? "").split(/\s+/)]
+      .map((w) => w.toLowerCase().replace(/[^a-z0-9]/g, ""))
+      .filter((w) => w.length > 2);
+    return [{
+      provider: "pexels" as const,
+      providerAssetId: `coverr_${v.id}`,
+      type: "VIDEO" as const,
+      url,
+      previewUrl: v.thumbnail || v.poster || "",
+      creator: "Coverr",
+      creatorUrl: "https://coverr.co",
+      sourceUrl: `https://coverr.co/videos/${v.id}`,
+      width: v.max_width || (vertical ? 1080 : 1920),
+      height: v.max_height || (vertical ? 1920 : 1080),
+      duration: v.duration != null ? Number(v.duration) : undefined,
+      slugWords: tags,
+    }];
+  });
+}
+
 export async function searchVideos(query: string, orientation: Orientation, targetW: number, targetH: number, perPage = 15): Promise<Candidate[]> {
+  if (y2ubeRemote()) {
+    const q = new URLSearchParams({ type: "video", q: query, orientation, w: String(targetW), h: String(targetH), perPage: String(perPage) });
+    const r = await y2fetch<{ results: Candidate[] }>(`/api/v1/providers/stock?${q}`, { timeoutMs: 60_000 });
+    return r.results ?? [];
+  }
+  if (useCoverr()) return searchCoverr(query, orientation, perPage);
+  const pixabayKey = process.env.PIXABAY_API_KEY?.trim();
+  if (pixabayKey && (!process.env.PEXELS_API_KEY || process.env.STOCK_PROVIDER === "pixabay")) {
+    const pixOrientation = orientation === "portrait" ? "vertical" : "horizontal";
+    const key = `pixabay:v:${orientation}:${perPage}:${query.toLowerCase()}`;
+    const data = await cached(key, () =>
+      fetchJson<{ hits: PixabayVideoHit[] }>(
+        `https://pixabay.com/api/videos/?key=${encodeURIComponent(pixabayKey)}&q=${encodeURIComponent(query)}&orientation=${pixOrientation}&per_page=${perPage}`
+      )
+    );
+    return (data.hits ?? []).flatMap((v) => {
+      const files = [v.videos.large, v.videos.medium, v.videos.small].filter((f): f is PixabayVideoFile => !!(f && f.url && f.width && f.height));
+      if (!files.length) return [];
+      const targetLong = Math.max(targetW, targetH);
+      const sorted = [...files].sort((a, b) => Math.max(a.width, a.height) - Math.max(b.width, b.height));
+      const file = sorted.find((f) => Math.max(f.width, f.height) >= targetLong) ?? sorted[sorted.length - 1];
+      const tags = v.tags ? v.tags.split(/,\s*/).map((w) => w.toLowerCase()).filter((w) => w.length > 2) : [];
+      return [{
+        provider: "pexels" as const,
+        providerAssetId: `pixabay_${v.id}`,
+        type: "VIDEO" as const,
+        url: file.url,
+        previewUrl: `https://i.vimeocdn.com/video/${v.picture_id}_640x360.jpg`,
+        creator: v.user ?? "Pixabay Creator",
+        creatorUrl: v.pageURL,
+        sourceUrl: v.pageURL,
+        width: file.width,
+        height: file.height,
+        duration: v.duration,
+        slugWords: tags,
+      }];
+    });
+  }
+
   const key = `pexels:v:${orientation}:${perPage}:${query.toLowerCase()}`;
   const data = await cached(key, () =>
     fetchJson<{ videos: PexelsVideo[] }>(
@@ -85,6 +193,39 @@ export async function searchVideos(query: string, orientation: Orientation, targ
 }
 
 export async function searchPhotos(query: string, orientation: Orientation, perPage = 15): Promise<Candidate[]> {
+  if (y2ubeRemote()) {
+    const q = new URLSearchParams({ type: "photo", q: query, orientation, perPage: String(perPage) });
+    const r = await y2fetch<{ results: Candidate[] }>(`/api/v1/providers/stock?${q}`, { timeoutMs: 60_000 });
+    return r.results ?? [];
+  }
+  if (useCoverr()) return [];
+  const pixabayKey = process.env.PIXABAY_API_KEY?.trim();
+  if (pixabayKey && (!process.env.PEXELS_API_KEY || process.env.STOCK_PROVIDER === "pixabay")) {
+    const pixOrientation = orientation === "portrait" ? "vertical" : "horizontal";
+    const key = `pixabay:p:${orientation}:${perPage}:${query.toLowerCase()}`;
+    const data = await cached(key, () =>
+      fetchJson<{ hits: PixabayPhotoHit[] }>(
+        `https://pixabay.com/api/?key=${encodeURIComponent(pixabayKey)}&q=${encodeURIComponent(query)}&image_type=photo&orientation=${pixOrientation}&per_page=${perPage}`
+      )
+    );
+    return (data.hits ?? []).map((p) => {
+      const tags = p.tags ? p.tags.split(/,\s*/).map((w) => w.toLowerCase()).filter((w) => w.length > 2) : [];
+      return {
+        provider: "pexels" as const,
+        providerAssetId: `pixabay_${p.id}`,
+        type: "IMAGE" as const,
+        url: p.largeImageURL || p.webformatURL,
+        previewUrl: p.previewURL,
+        creator: p.user ?? "Pixabay Creator",
+        creatorUrl: p.pageURL,
+        sourceUrl: p.pageURL,
+        width: p.imageWidth,
+        height: p.imageHeight,
+        slugWords: tags,
+      };
+    });
+  }
+
   const key = `pexels:p:${orientation}:${perPage}:${query.toLowerCase()}`;
   const data = await cached(key, () =>
     fetchJson<{ photos: PexelsPhoto[] }>(
@@ -144,7 +285,16 @@ export function scoreCandidate(i: RankInput): number {
   return s;
 }
 
-export async function pingPexels(): Promise<number> {
+export async function pingPexels(): Promise<number | string> {
+  if (useCoverr()) {
+    const d = await fetchJson<{ total?: number }>(`https://api.coverr.co/videos?query=city&page_size=1`, { headers: { "x-api-key": coverrKey() } }, 0);
+    return `${d.total ?? 0} (Coverr)`;
+  }
+  const pixabayKey = process.env.PIXABAY_API_KEY?.trim();
+  if (pixabayKey && (!process.env.PEXELS_API_KEY || process.env.STOCK_PROVIDER === "pixabay")) {
+    const d = await fetchJson<{ totalHits: number }>(`https://pixabay.com/api/videos/?key=${encodeURIComponent(pixabayKey)}&q=city&per_page=3`, {}, 0);
+    return `${d.totalHits ?? 0} (Pixabay)`;
+  }
   try {
     const d = await fetchJson<{ total_results: number }>("https://api.pexels.com/videos/search?query=city&per_page=1", { headers: headers() }, 0);
     return d.total_results;

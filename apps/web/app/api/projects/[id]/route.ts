@@ -58,6 +58,7 @@ export const PATCH = withAuth(async (req: Request, ctx: { params: Promise<{ id: 
     data: {
       mixSettings: merged.mixSettings, captionsEnabled: merged.captionsEnabled, captionStyle: merged.captionStyle,
       musicEnabled: merged.musicEnabled, logoUrl: merged.logoUrl, logoPath: merged.logoPath, logoPosition: merged.logoPosition,
+      channelName: merged.channelName,
       ...(typeof body.title === "string" && body.title.trim() ? { title: body.title.trim().slice(0, 120) } : {}),
       textOverlaysEnabled: merged.textOverlaysEnabled, outputQuality: merged.outputQuality, look: merged.look, lookIntensity: merged.lookIntensity,
       ...(merged.lookParams !== undefined ? { lookParams: merged.lookParams } : {}),

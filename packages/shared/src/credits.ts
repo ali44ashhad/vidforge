@@ -43,7 +43,7 @@ export function estimateCredits(i: EstimateInput & { presenter?: boolean }, R: t
   // one presenter clip per spoken part of the script (~8 s of narration each); PRESENTER_MAX_CLIPS on the worker can cap it
   if (i.presenter) { const pc = Math.max(1, Math.ceil(secs / 8)); clips += pc; b.push({ label: `${pc} AI presenter clips`, credits: pc * R.aiVideoClip }); }
   if (i.musicEnabled) b.push({ label: "Music", credits: R.musicTrack });
-  b.push({ label: "Thumbnails & publish kit", credits: 2 * R.thumbnailBackground + R.publishKit });
+  b.push({ label: "Publish kit", credits: R.publishKit });
   const credits = Math.max(R.minimum, Math.ceil(b.reduce((a, x) => a + x.credits, 0)));
   return { credits, reserve: Math.ceil(credits * R.reserveBuffer), breakdown: b.map((x) => ({ ...x, credits: Math.round(x.credits * 10) / 10 })), clips, images };
 }
@@ -53,7 +53,7 @@ export function settleCredits(stats: Record<string, unknown>, targetDuration: nu
   const n = (k: string) => Number(stats[k] ?? 0) || 0;
   const secs = n("durationSeconds") || targetDuration;
   let c = secs * R.baseSecond + n("videosFound") * R.stockClip + n("imagesFound") * R.stockClip + n("aiImages") * R.aiImage + n("aiVideos") * R.aiVideoClip
-    + (res === "1080p" ? n("aiVideos") * R.aiVideo1080p : 0) + n("characters") * R.characterSheet + (n("musicTracks") ? R.musicTrack : 0) + 2 * R.thumbnailBackground + R.publishKit;
+    + (res === "1080p" ? n("aiVideos") * R.aiVideo1080p : 0) + n("characters") * R.characterSheet + (n("musicTracks") ? R.musicTrack : 0) + R.publishKit;
   return Math.max(R.minimum, Math.ceil(c));
 }
 

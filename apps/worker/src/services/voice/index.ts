@@ -1,20 +1,25 @@
 /**
  * Voice provider facade. Everything else in the app imports from here.
  *   VOICE_PROVIDER=elevenlabs  → ElevenLabs directly (word timestamps for captions)
- *   VOICE_PROVIDER=abhibots    → AbhiBots reseller (no timestamps → estimated caption timing)
  */
+import fs from "node:fs";
 import { env } from "../../env";
+import { y2fetch, y2ubeRemote } from "../y2ube";
 import * as eleven from "./elevenlabs";
-import * as abhi from "./abhibots";
+import { kieSpeakToFile, listKieVoices, resolveKieVoice } from "./kie";
 
 export type { VoiceInfo, Alignment } from "./elevenlabs";
 export { normalizeForSpeech } from "./normalize";
 export { alignmentToWords } from "./elevenlabs";
 
-export const providerName = () => (env.VOICE_PROVIDER === "abhibots" ? "abhibots" : "elevenlabs");
+export const providerName = () => (env.VOICE_PROVIDER === "kie" ? "kie" : "elevenlabs");
 
 export async function listVoices() {
-  return providerName() === "abhibots" ? abhi.listVoices() : eleven.listVoices();
+  if (y2ubeRemote()) {
+    const r = await y2fetch<{ voices: eleven.VoiceInfo[] }>("/api/v1/providers/voices", { timeoutMs: 60_000 });
+    return r.voices ?? [];
+  }
+  return providerName() === "kie" ? listKieVoices() : eleven.listVoices();
 }
 
 /** Prefer voices whose labels mention the language or an Indian accent for Indic languages. */
@@ -29,31 +34,33 @@ export function languageVoiceScore(language: string, labels: Record<string, stri
 }
 
 export async function resolveVoiceId(style: string, projectVoiceId?: string | null, language?: string, prismaClient?: { voice: { findMany: () => Promise<{ id: string; name: string; labels: unknown }[]> } }): Promise<string> {
+  if (providerName() === "kie") return resolveKieVoice(style, projectVoiceId);
   if (!projectVoiceId && language && prismaClient) {
     const pool = await prismaClient.voice.findMany();
     const best = pool.map((v) => ({ id: v.id, s: languageVoiceScore(language, v.labels as Record<string, string>, v.name) })).sort((a, b) => b.s - a.s)[0];
     if (best && best.s >= 4) return best.id;
   }
-  if (providerName() === "elevenlabs") return eleven.resolveVoiceId(style, projectVoiceId);
-  // an explicit choice (user, AI casting, brand kit or template default) always wins: the reseller proxies
-  // ElevenLabs, so any voice id that exists on the account works even when it is not in the reseller's own list
-  if (projectVoiceId) return projectVoiceId;
-  const voices = await abhi.listVoices();
-  const ids = new Set(voices.map((v) => v.voice_id));
-  if (env.ELEVENLABS_VOICE_ID && ids.has(env.ELEVENLABS_VOICE_ID)) return env.ELEVENLABS_VOICE_ID;
-  for (const id of eleven.STYLE_DEFAULTS[style] ?? []) if (ids.has(id)) return id;
-  // the reseller list may be empty/partial — premade ElevenLabs IDs still work there
-  return projectVoiceId || env.ELEVENLABS_VOICE_ID || eleven.STYLE_DEFAULTS[style]?.[0] || voices[0]?.voice_id || "21m00Tcm4TlvDq8ikWAM";
+  return eleven.resolveVoiceId(style, projectVoiceId);
 }
 
 export interface SynthArgs { text: string; voiceId: string; style: string; speed: number; dest: string; previousText?: string; nextText?: string; language?: string }
 
 /** Returns word timings when the provider supplies them, otherwise null (caller estimates). */
 export async function synthesizeToFile(args: SynthArgs): Promise<{ alignment: eleven.Alignment | null }> {
-  if (providerName() === "elevenlabs") return eleven.synthesizeToFile(args);
-  const s = eleven.settingsForStyle(args.style, args.speed);
-  await abhi.synthesizeToFile({ text: args.text, voiceId: args.voiceId, dest: args.dest, speed: s.speed, stability: s.stability, similarity: s.similarity_boost, style: s.style, language: args.language });
-  return { alignment: null };
+  if (y2ubeRemote()) {
+    const r = await y2fetch<{ audioBase64?: string; alignment: eleven.Alignment | null }>("/api/v1/providers/voice", {
+      method: "POST", timeoutMs: 360_000,
+      body: { text: args.text, voiceId: args.voiceId, style: args.style, speed: args.speed, language: args.language, previousText: args.previousText, nextText: args.nextText },
+    });
+    if (!r.audioBase64) throw new Error("y2ube voice response had no audio");
+    fs.writeFileSync(args.dest, Buffer.from(r.audioBase64, "base64"));
+    return { alignment: r.alignment ?? null };
+  }
+  if (providerName() === "kie") {
+    await kieSpeakToFile(args.text, args.voiceId, args.dest, args.style);
+    return { alignment: null };
+  }
+  return eleven.synthesizeToFile(args);
 }
 
 /**
@@ -76,7 +83,10 @@ export function estimateWords(text: string, duration: number): { word: string; s
 }
 
 export async function ping(): Promise<string> {
-  if (providerName() === "abhibots") return `AbhiBots: ${await abhi.ping()}`;
+  if (y2ubeRemote()) {
+    const r = await y2fetch<{ detail?: string }>("/api/v1/providers/ping", { timeoutMs: 30_000 });
+    return r.detail ?? "y2ube";
+  }
   const v = await eleven.listVoices();
   return `ElevenLabs: ${v.length} voices (first: ${v[0]?.name} ${v[0]?.voice_id})`;
 }

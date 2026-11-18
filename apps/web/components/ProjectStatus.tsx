@@ -19,7 +19,7 @@ type Project = {
   aspectRatio: string; checkpoint: { completedStages?: string[] } | null;
   stats: Record<string, number | string> | null; script: string | null; pauseRequested: boolean;
   mixSettings: Partial<MixSettings> | null; musicEnabled: boolean; captionsEnabled: boolean; captionStyle: string;
-  logoUrl: string | null; logoPath: string | null; logoPosition: string;
+  logoUrl: string | null; logoPath: string | null; logoPosition: string; channelName?: string | null;
   textOverlaysEnabled: boolean; outputQuality: string; voiceEnabled: boolean; look: string; lookIntensity: number; creditsCharged?: number; speechMode?: string;
   seo: Kit | null;
   characters?: { character: { id: string; name: string; description: string; referencePublicUrl: string | null; voiceId: string | null; gender?: string | null } }[];
@@ -219,7 +219,7 @@ export default function ProjectStatus({ id, youtubeConnected = false }: { id: st
           </div>
           <div className="rounded-2xl border border-line bg-panel p-5 text-[14px] text-ink-2">
             <div className="text-[15px] font-semibold text-ink">While you wait</div>
-            <ul className="mt-2 list-disc space-y-1 pl-4"><li>You can close this page — we'll email you when it's ready.</li><li>Three thumbnails and an SEO package are generated at the end.</li><li>After it finishes, any shot or paragraph can be replaced without re-generating everything.</li></ul>
+            <ul className="mt-2 list-disc space-y-1 pl-4"><li>You can close this page — we'll email you when it's ready.</li><li>An SEO package (titles, description, tags) is generated at the end. Thumbnails are not.</li><li>After it finishes, any shot or paragraph can be replaced without re-generating everything.</li></ul>
           </div>
         </div>
       </div>
@@ -273,7 +273,8 @@ function RenderSettings({ project, onDone }: { project: Project; onDone: () => v
   const [musicEnabled, setMusicEnabled] = useState(project.musicEnabled);
   const [captionsEnabled, setCaptionsEnabled] = useState(project.captionsEnabled);
   const [captionStyle, setCaptionStyle] = useState(project.captionStyle);
-  const [logo, setLogo] = useState<LogoValue>({ logoUrl: project.logoUrl, logoPath: project.logoPath, logoPosition: project.logoPosition });
+  const [logo, setLogo] = useState<LogoValue>({ logoUrl: project.logoUrl, logoPath: project.logoPath, logoPosition: project.logoUrl ? project.logoPosition : "bottom_right" });
+  const [channelName, setChannelName] = useState(project.channelName ?? "");
   const [textOverlaysEnabled, setTextOverlays] = useState(project.textOverlaysEnabled);
   const [outputQuality, setOutputQuality] = useState(project.outputQuality);
   const [look, setLook] = useState(project.look ?? "auto");
@@ -282,7 +283,7 @@ function RenderSettings({ project, onDone }: { project: Project; onDone: () => v
 
   async function apply() {
     setBusy(true);
-    await fetch(`/api/projects/${project.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mixSettings: mix, musicEnabled, captionsEnabled, captionStyle, textOverlaysEnabled, outputQuality, look, lookIntensity, ...logo }) });
+    await fetch(`/api/projects/${project.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mixSettings: mix, musicEnabled, captionsEnabled, captionStyle, textOverlaysEnabled, outputQuality, look, lookIntensity, channelName, ...logo }) });
     await fetch(`/api/projects/${project.id}/render`, { method: "POST" });
     onDone();
   }
@@ -310,6 +311,10 @@ function RenderSettings({ project, onDone }: { project: Project; onDone: () => v
             </select>
           </label>
         </div>
+        <label className="block text-sm">
+          <span className="mb-1 block text-ink-2">Channel name on the end card</span>
+          <input className="field" placeholder="Your channel name" maxLength={80} value={channelName} onChange={(e) => setChannelName(e.target.value)} />
+        </label>
         <LogoUpload value={logo} onChange={setLogo} />
       </div>
       <button className="btn-primary mt-6 flex items-center gap-2" onClick={apply} disabled={busy}>

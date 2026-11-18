@@ -261,6 +261,8 @@ model Project {
   captionsEnabled Boolean      @default(true)
   captionStyle   String        @default("YouTube Clean")
   cta            String?
+  /// Name under the end-of-video Subscribe card. Empty means that line is omitted.
+  channelName    String?
 
   /// "stock_videos" | "ai_images" | "mixed"
   visualSource   String        @default("mixed")

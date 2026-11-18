@@ -22,7 +22,7 @@ export default function LogoUpload({ value, onChange }: { value: LogoValue; onCh
   return (
     <div className="grid gap-3 md:grid-cols-[1fr_200px]">
       <label className="block text-sm">
-        <span className="mb-1 block text-ink-2">Channel logo (PNG with transparency works best)</span>
+        <span className="mb-1 block text-ink-2">Upload logo (PNG or JPG, under 4 MB)</span>
         <div className="flex items-center gap-3">
           {value.logoUrl && <img src={value.logoUrl} alt="" className="h-10 w-10 rounded bg-panel-2 object-contain" />}
           <input type="file" accept="image/png,image/jpeg,image/webp" className="text-sm text-ink-2" disabled={busy} onChange={(e) => e.target.files?.[0] && upload(e.target.files[0])} />

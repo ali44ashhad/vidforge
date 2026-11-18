@@ -21,8 +21,11 @@ async function check(name: string, fn: () => Promise<string>) {
 
 (async () => {
   await check("ffmpeg", async () => { await assertFfmpegInstalled(); return "installed"; });
-  await check("DeepSeek", async () => `model ${env.DEEPSEEK_MODEL} replied ${await pingDeepSeek()}`);
-  await check("Pexels", async () => `${await pingPexels()} results for "city"`);
+  const llmName = "DeepSeek";
+  const llmModel = env.DEEPSEEK_MODEL;
+  await check(llmName, async () => `model ${llmModel} replied ${await pingDeepSeek()}`);
+  const stockName = process.env.PIXABAY_API_KEY && !process.env.PEXELS_API_KEY ? "Pixabay" : "Pexels";
+  await check(stockName, async () => `${await pingPexels()} results for "city"`);
   await check(`Voice provider (${env.VOICE_PROVIDER})`, pingVoice);
   await check("Kie.ai", pingKie);
   if (env.SNAPGEN_API_KEY) await check("SnapGen", pingSnap);

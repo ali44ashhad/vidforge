@@ -7,7 +7,7 @@ import LogoUpload, { type LogoValue } from "@/components/LogoUpload";
 import VoicePicker from "@/components/VoicePicker";
 
 export type BrandKit = { logoUrl: string | null; logoPath: string | null; logoPosition: string; brandColor: string; accentColor: string; voiceId: string; voiceStyle: string; imageStyle: string; captionStyle: string; look: string; intro: string; outro: string };
-const DEFAULT: BrandKit = { logoUrl: null, logoPath: null, logoPosition: "top_right", brandColor: "#6C4CFF", accentColor: "#FFB648", voiceId: "", voiceStyle: "Professional", imageStyle: "cinematic_photo", captionStyle: "YouTube Clean", look: "auto", intro: "", outro: "" };
+const DEFAULT: BrandKit = { logoUrl: null, logoPath: null, logoPosition: "bottom_right", brandColor: "#6C4CFF", accentColor: "#FFB648", voiceId: "", voiceStyle: "Professional", imageStyle: "cinematic_photo", captionStyle: "YouTube Clean", look: "auto", intro: "", outro: "" };
 
 /** Brand defaults applied to every new video (logo, colours, voice, style, captions, look, intro/outro lines). */
 export default function BrandKitEditor({ compact = false }: { compact?: boolean }) {

@@ -11,8 +11,8 @@ const D = process.argv[2] || "/tmp/rt";
 const words = (text: string, dur: number) => text.split(" ").map((w, i, a) => ({ word: w, start: (i / a.length) * dur, end: ((i + 1) / a.length) * dur }));
 
 const tl: Timeline = {
-  projectId: "selftest", width: 1280, height: 720, fps: 30, totalDuration: 4.35 + 3.85,
-  music: { src: path.join(D, "music.mp3"), duration: 6 }, captionsEnabled: true, captionStyle: "YouTube Clean", warnings: [], voiceEnabled: true, nativeSpeech: false, presenter: null, textOverlays: true, look: "auto", lookIntensity: 70, lookParams: { contrast: 0.3, saturation: 0.5, brightness: 0.3, warmth: 0.2, sharpen: 0.6, vignette: 0, grain: 0, leak: 0 }, banners: { top: "₹8000 में 10 Ads Videos", topHighlight: "₹8000", bottom: "Book Your 10 Video Package", color: "#FF7A00" }, mix: { musicVolume: 0.3 }, logo: fs.existsSync(path.join(D, "logo.png")) ? { src: path.join(D, "logo.png"), position: "top_right" } : null,
+  projectId: "selftest", width: 1280, height: 720, fps: 30, totalDuration: 4.35 + 3.85, language: "English", moodTracks: {}, chapterMoods: [],
+  music: { src: path.join(D, "music.mp3"), duration: 6 }, captionsEnabled: true, captionStyle: "YouTube Clean", warnings: [], voiceEnabled: true, nativeSpeech: false, presenter: null, textOverlays: true, look: "auto", lookIntensity: 70, lookParams: { contrast: 0.3, saturation: 0.5, brightness: 0.3, warmth: 0.2, sharpen: 0.6, vignette: 0, grain: 0, leak: 0 }, banners: { top: "₹8000 में 10 Ads Videos", topHighlight: "₹8000", bottom: "Book Your 10 Video Package", color: "#FF7A00" }, mix: { musicVolume: 0.3 }, logo: fs.existsSync(path.join(D, "logo.png")) ? { src: path.join(D, "logo.png"), position: "top_right" } : null, channelName: "Demo Channel",
   scenes: [
     { id: "s0", chapterOrder: 0, order: 0, start: 0, duration: 4.35, voiceSrc: path.join(D, "v0.mp3"), voiceDuration: 4,
       words: words("This is the first scene of our self test video", 4), fadeIn: true, fadeOut: false,

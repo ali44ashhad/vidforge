@@ -91,8 +91,8 @@ export const CAPTION_STYLES = [
 export const WORDS_PER_MINUTE = 145;
 
 export const VISUAL_SOURCES = [
-  { value: "mixed", label: "Stock videos + AI images", hint: "Pexels footage; AI image when no good clip exists" },
-  { value: "stock_videos", label: "Stock videos only", hint: "Pexels videos, photos as fallback. Free." },
+  { value: "mixed", label: "Stock videos + AI images", hint: "Coverr footage; an AI image when no good clip exists" },
+  { value: "stock_videos", label: "Stock videos only", hint: "Coverr footage. Photos are not available from Coverr." },
   { value: "ai_images", label: "AI images only", hint: "Every shot generated as an AI image (credits per image)" },
   { value: "ai_video_hero", label: "AI images + AI video for key shots", hint: "First shot of every scene becomes a real AI video clip (Veo), the rest are animated images. Video clips cost far more than images." },
   { value: "ai_videos", label: "AI video for every shot", hint: "Every shot generated as an 8-second AI video clip from its image. Highest quality, highest cost and slowest." },

@@ -1,4 +1,4 @@
-import { ASPECT_RATIOS, VIDEO_TYPES, VOICE_STYLES, VISUAL_SOURCES, MUSIC_STYLES, CAPTION_STYLES, LOGO_POSITIONS, DEFAULT_MIX, LOOKS, DEFAULT_LOOK, type MixSettings, type CharacterInput } from "@vidforge/shared";
+import { ASPECT_RATIOS, VIDEO_TYPES, VOICE_STYLES, MUSIC_STYLES, CAPTION_STYLES, LOGO_POSITIONS, DEFAULT_MIX, LOOKS, DEFAULT_LOOK, VISUAL_SOURCES, type MixSettings, type CharacterInput } from "@vidforge/shared";
 import type { Prisma } from "@vidforge/db";
 
 const inList = (list: readonly string[], v: unknown, fallback: string) => (typeof v === "string" && list.includes(v) ? v : fallback);
@@ -35,14 +35,14 @@ export function parseSettings(body: Record<string, unknown>) {
         }))
         .filter((c) => c.name && c.description.length >= 10)
     : [];
-  const presenterMode = body.presenterMode === "ai" && body.presenterImageUrl ? "ai" : "off";
+  const presenterMode = "off";
   return {
-    presenterMode, presenterImageUrl: presenterMode === "ai" ? String(body.presenterImageUrl) : null, presenterImagePath: presenterMode === "ai" ? String(body.presenterImagePath ?? "") || null : null,
+    presenterMode, presenterImageUrl: null, presenterImagePath: null,
     presenterPosition: ["bottom_left", "bottom_right", "top_left", "top_right"].includes(String(body.presenterPosition)) ? String(body.presenterPosition) : "bottom_left",
     presenterSize: Math.min(75, Math.max(12, Number(body.presenterSize ?? 34))), presenterShape: body.presenterShape === "cutout" ? "cutout" : "circle", presenterRing: /^#[0-9a-f]{6}$/i.test(String(body.presenterRing)) ? String(body.presenterRing) : "#6C4CFF",
     storyMode,
     narratorEnabled,
-    speechMode: body.speechMode === "veo_native" ? "veo_native" : "tts",
+    speechMode: "tts",
     allowStockFallback: body.allowStockFallback === true,
     scriptVerbatim: body.scriptVerbatim === true,
     banners: (body.banners && typeof body.banners === "object"
@@ -71,17 +71,18 @@ export function parseSettings(body: Record<string, unknown>) {
     voiceStyle: inList(VOICE_STYLES, body.voiceStyle, "Professional"),
     voiceId: typeof body.voiceId === "string" && body.voiceId.trim() ? body.voiceId.trim() : null,
     voiceSpeed: num(body.voiceSpeed, 0.7, 1.2, 1.0),
-    visualSource: inList(VISUAL_SOURCES.map((v) => v.value), body.visualSource, "mixed") as string,
+    visualSource: inList(VISUAL_SOURCES.map((v) => v.value), body.visualSource, "mixed"),
     imageStyle: typeof body.imageStyle === "string" && body.imageStyle.trim() ? body.imageStyle.trim().slice(0, 120) : null,
-    musicEnabled: body.musicEnabled !== false,
+    musicEnabled: false,
     musicStyle: inList(MUSIC_STYLES, body.musicStyle, "Auto"),
     musicCustomPrompt: typeof body.musicCustomPrompt === "string" && body.musicCustomPrompt.trim() ? body.musicCustomPrompt.trim().slice(0, 500) : null,
     mixSettings: mixSettings as unknown as Prisma.InputJsonValue,
     captionsEnabled: body.captionsEnabled !== false,
     captionStyle: inList(CAPTION_STYLES, body.captionStyle, "YouTube Clean"),
     cta: typeof body.cta === "string" && body.cta.trim() ? body.cta.trim().slice(0, 300) : null,
+    channelName: typeof body.channelName === "string" && body.channelName.trim() ? body.channelName.trim().slice(0, 80) : null,
     logoUrl: typeof body.logoUrl === "string" && body.logoUrl ? body.logoUrl : null,
     logoPath: typeof body.logoPath === "string" && body.logoPath ? body.logoPath : null,
-    logoPosition: inList(LOGO_POSITIONS.map((l) => l.value), body.logoPosition, "top_right"),
+    logoPosition: inList(LOGO_POSITIONS.map((l) => l.value), body.logoPosition, "bottom_right"),
   };
 }

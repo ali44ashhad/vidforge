@@ -59,6 +59,7 @@ export interface Timeline {
   banners: { top?: string; topHighlight?: string; bottom?: string; color?: string } | null;
   mix: Partial<MixSettings> | null;
   logo: { src: string; position: string } | null;
+  channelName: string | null;
   scenes: TimelineScene[];
   warnings: string[];
 }
@@ -175,6 +176,7 @@ export async function buildTimeline(projectId: string): Promise<Timeline> {
     banners: (p.banners as Timeline["banners"]) ?? null,
     mix: (p.mixSettings as Partial<MixSettings> | null) ?? null,
     logo: p.logoPath && fileOk(p.logoPath) ? { src: p.logoPath, position: p.logoPosition } : null,
+    channelName: p.channelName?.trim() || null,
   };
   if (p.logoPath && !fileOk(p.logoPath)) warnings.push("Logo file missing on disk — rendering without logo");
   if (!p.musicEnabled) timeline.music = null;

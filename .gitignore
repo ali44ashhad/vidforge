@@ -6,5 +6,6 @@ storage/
 *.log
 .DS_Store
 config.bat
-
 .env
+.env.*
+!.env.example

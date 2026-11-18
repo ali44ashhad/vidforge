@@ -20,6 +20,7 @@ import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
 import { env } from "./env";
+import { mountGateway } from "./gateway";
 import { log } from "./lib/log";
 import { buildPublishKit, renderThumbnailsFromChoices } from "./services/seo";
 
@@ -29,6 +30,7 @@ export function startFileServer() {
   const app = express();
   app.use((_req, res, next) => { res.setHeader("Access-Control-Allow-Origin", "*"); next(); });
   app.get("/health", (_req, res) => res.json({ ok: true, service: "vidforge-worker" }));
+  mountGateway(app);
 
   /** Admin status (queue, in-flight, provider balances, disk). Needs header x-admin-token = WORKER_ADMIN_TOKEN. */
   app.get("/admin/status", async (req, res) => {
@@ -244,8 +246,10 @@ export function startFileServer() {
       },
     })
   );
-  app.listen(env.WORKER_PORT, () => {
+  const server = app.listen(env.WORKER_PORT, () => {
     log("server", `file server listening on http://localhost:${env.WORKER_PORT}`);
     log("server", `serving ${env.STORAGE_DIR} at ${env.STORAGE_PUBLIC_URL}/files/`);
   });
+  server.requestTimeout = 600_000;
+  server.headersTimeout = 610_000;
 }

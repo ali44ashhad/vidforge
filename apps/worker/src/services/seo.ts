@@ -7,12 +7,9 @@ import path from "node:path";
 import { z } from "zod";
 import { prisma, type Prisma } from "@vidforge/db";
 import { askJson } from "./deepseek";
-import { generateAiImage } from "./imageProvider";
-import { downloadFile } from "../lib/media";
 import { runFfmpeg, filterPath } from "../lib/ffmpeg";
 import { projectDir, publicUrl } from "../lib/storage";
 import { stripUnrenderable, fontFileFor } from "../lib/text";
-import { findStyle } from "@vidforge/shared";
 
 const SeoSchema = z.object({
   titles: z.array(z.string().min(5).max(100)).min(3).max(5),
@@ -76,37 +73,12 @@ Return this JSON:
   const kit = await askJson(SeoSchema, system, user, 4000);
   log(`SEO copy ready: ${kit.titles.length} titles, ${kit.tags.length} tags`);
 
-  // thumbnails: 2 backgrounds × first text option, plus a variant with the second text
-  const dir = projectDir(projectId, "output", "thumbnails");
-  const thumbs: SeoKit["thumbnails"] = [];
-  const aspect = isShort ? "9:16" : "16:9";
-  const W = isShort ? 1080 : 1280, H = isShort ? 1920 : 720;
-  const preset = findStyle(p.imageStyle);
-  const styleText = preset ? preset.prompt : (p.imageStyle || "cinematic photo");
-  const prompts = [kit.thumbnailPrompt, kit.thumbnailPromptAlt || `${kit.thumbnailPrompt}. Different composition: wider shot, dramatic sky.`];
-  const refs = ((p.referenceImages as { url: string; path: string; kind: string }[] | null) ?? []).filter((r) => r.kind !== "style").map((r) => (/^https?:\/\//.test(r.url) && !/localhost/.test(r.url) ? r.url : r.path));
+  // Designed YouTube thumbnails are off: they used extra image generations. SEO text still saves.
   const backgrounds: SeoKit["backgrounds"] = [];
-  for (let i = 0; i < 2; i++) {
-    try {
-      const img = await generateAiImage(`${prompts[i]}. ${styleText}. Ultra sharp, high contrast, saturated, thumbnail composition, no text, no watermark.`, aspect, refs, p.imageStyle);
-      const bg = path.join(dir, `bg-${i + 1}.jpg`);
-      await downloadFile(img.url, bg);
-      backgrounds.push({ url: publicUrl(bg), path: bg });
-    } catch (e) { log(`thumbnail background ${i + 1} failed: ${(e as Error).message}`); }
-  }
-  // first drafts: option 1 on background 1, option 2 on background 2 — the user can re-render any combination
-  for (let i = 0; i < Math.min(2, backgrounds.length); i++) {
-    try {
-      const rawText = stripUnrenderable(kit.thumbnailTexts[i] || kit.thumbnailTexts[0]);
-      const highlight = stripUnrenderable(kit.thumbnailHighlightWords[i] || "");
-      const out = path.join(dir, `thumbnail-${i + 1}.jpg`);
-      await renderThumbnail(backgrounds[i].path, out, rawText, highlight, W, H, isShort, dir, i + 1);
-      thumbs.push({ url: publicUrl(out), path: out, text: rawText, highlight, bg: i });
-    } catch (e) { log(`thumbnail ${i + 1} failed: ${(e as Error).message}`); }
-  }
+  const thumbs: SeoKit["thumbnails"] = [];
   const result: SeoKit = { ...kit, chapters, backgrounds, thumbnails: thumbs, generatedAt: new Date().toISOString() };
   await prisma.project.update({ where: { id: projectId }, data: { seo: result as unknown as Prisma.InputJsonValue } });
-  log(`publish kit stored (${thumbs.length} thumbnails)`);
+  log("publish kit stored (thumbnails skipped)");
   return result;
 }
 

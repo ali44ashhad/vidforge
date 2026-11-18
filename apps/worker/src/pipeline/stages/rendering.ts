@@ -25,7 +25,9 @@ export const rendering: StageDefinition = {
         where: { id: p.id },
         data: {
           finalVideoUrl: publicUrl(out.finalPath), thumbnailUrl: publicUrl(out.thumbPath), captionsUrl: publicUrl(out.srtPath),
-          actualDuration: out.duration, fileSize: out.fileSize, width: tl.width, height: tl.height,
+          actualDuration: out.duration,
+          fileSize: Math.round(out.fileSize),
+          width: tl.width, height: tl.height,
         },
       });
       ctx.log(`render done: ${out.duration.toFixed(1)}s, ${(out.fileSize / 1e6).toFixed(1)} MB`);

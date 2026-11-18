@@ -34,7 +34,7 @@ export async function fetchRetry(url: string, init: RequestInit & { timeoutMs?: 
   throw lastErr;
 }
 
-export async function fetchJson<T>(url: string, init: RequestInit = {}, retries = 3): Promise<T> {
+export async function fetchJson<T>(url: string, init: RequestInit & { timeoutMs?: number } = {}, retries = 3): Promise<T> {
   const res = await fetchRetry(url, init, retries);
   const text = await res.text();
   if (!res.ok) throw new HttpError(res.status, text, url);

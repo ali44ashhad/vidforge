@@ -29,8 +29,12 @@ curl -X POST ${base}/api/v1/projects \\
 # → {"id":"…","status":"QUEUED","creditsReserved":18,"url":"…"}
 
 # poll until status is COMPLETED (finalVideoUrl, thumbnailUrl, seo)
-curl ${base}/api/v1/projects/PROJECT_ID -H "Authorization: Bearer y2_YOUR_KEY"`}</pre>
-        <p className="mt-2 text-xs text-ink-3">Any field from the Create form is accepted (aspectRatio R16_9 / R9_16, imageStyle, look, musicStyle, captionsEnabled, voiceId, characters…). Credits are reserved on create and settled on completion.</p>
+curl ${base}/api/v1/projects/PROJECT_ID -H "Authorization: Bearer y2_YOUR_KEY"
+
+# same key, for a self-hosted worker: script, voice, image, stock, music
+# POST /api/v1/providers/llm  /voice  /image  /music
+# GET  /api/v1/providers/stock  /voices  /ping`}</pre>
+        <p className="mt-2 text-xs text-ink-3">Any field from the Create form is accepted (aspectRatio R16_9 / R9_16, imageStyle, look, musicStyle, captionsEnabled, voiceId, characters…). Credits are reserved on create and settled on completion. Provider calls charge separately: script 1, voice 1 per 800 characters, image 2, music 6. Failed provider calls are refunded.</p>
       </div>
     </div>
   );

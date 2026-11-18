@@ -7,6 +7,7 @@ import { startFileServer } from "./server";
 import { startPoller } from "./poller";
 import { assertFfmpegInstalled } from "./lib/media";
 import { syncVoicesToDb } from "./services/voice";
+import { y2ubeRemote } from "./services/y2ube";
 import { env } from "./env";
 
 async function main() {
@@ -23,14 +24,14 @@ async function main() {
   }
   await assertFfmpegInstalled().then(() => log("worker", "ffmpeg OK (all required filters present)")).catch((e) => log("worker", `WARNING: ${e.message}`));
   startFileServer();
-  if (env.ELEVENLABS_API_KEY || env.ABHIBOTS_API_KEY) {
-    const sync = () => syncVoicesToDb(prisma as never).then((n) => log("voices", `synced ${n} voices from ${env.VOICE_PROVIDER}`)).catch((e) => log("voices", `sync failed: ${e.message}`));
+  if (y2ubeRemote() || env.VOICE_PROVIDER === "kie" || env.ELEVENLABS_API_KEY) {
+    const sync = () => syncVoicesToDb(prisma as never).then((n) => log("voices", `synced ${n} voices from ${y2ubeRemote() ? "y2ube" : env.VOICE_PROVIDER}`)).catch((e) => log("voices", `sync failed: ${e.message}`));
     void sync();
     setInterval(sync, 6 * 3600 * 1000);
   }
   scheduleHousekeeping();
-  // community voice library: first sync 2 min after boot, then nightly
-  setTimeout(() => syncCommunityVoices().catch(() => {}), 120_000); setInterval(() => syncCommunityVoices().catch(() => {}), 24 * 3600e3);
+  // community voice library uses a direct ElevenLabs key; a y2_ client has none
+  if (!y2ubeRemote() && env.VOICE_PROVIDER !== "kie") { setTimeout(() => syncCommunityVoices().catch(() => {}), 120_000); setInterval(() => syncCommunityVoices().catch(() => {}), 24 * 3600e3); }
   await startPoller();
 }
 
