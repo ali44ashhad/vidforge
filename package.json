@@ -12,7 +12,7 @@
     "db:deploy": "prisma migrate deploy --schema packages/db/prisma/schema.prisma",
     "db:studio": "prisma studio --schema packages/db/prisma/schema.prisma",
     "dev": "node init && npm run dev -w apps/web",
-    "worker": "node init && npm run dev -w apps/worker",
+    "worker": "npm run dev -w apps/worker",
     "check": "npm run check -w apps/worker",
     "dev:web": "node init && npm run dev -w apps/web",
     "dev:worker": "node init && npm run dev -w apps/worker",
